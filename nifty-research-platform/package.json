@@ -1,0 +1,11 @@
+{
+  "name": "nifty-research-terminal",
+  "version": "1.0.0",
+  "description": "End-of-day NIFTY derivatives research terminal: options chain, Greeks/IV, futures, FII/DII, backtesting, risk and payoff analysis.",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "bundle-data": "node tools/bundle-data.js"
+  },
+  "engines": { "node": ">=18" }
+}

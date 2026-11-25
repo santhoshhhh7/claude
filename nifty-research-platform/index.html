@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="NIFTY derivatives research terminal: options chain, Greeks and IV, futures basis, FII/DII, backtesting, risk and payoff analysis from end-of-day NSE data.">
+  <title>NIFTY Research Terminal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/terminal.css">
+</head>
+<body>
+  <a class="skip" href="#view">Skip to content</a>
+  <header class="top">
+    <div class="brand"><span class="logo">NRT</span><div><div class="brand-t">NIFTY Research Terminal</div><div class="brand-s">Indian index derivatives · end-of-day</div></div></div>
+    <div class="status" id="status" aria-live="polite"></div>
+    <div class="actions">
+      <button class="btn btn-sm" id="btn-import" title="Import CSV or Excel files">Import</button>
+      <button class="btn btn-sm" id="btn-report" title="Download a self-contained HTML research note">Report</button>
+      <button class="btn btn-sm" id="btn-print" title="Print this page">Print</button>
+      <button class="btn btn-sm" id="btn-theme">Light</button>
+    </div>
+  </header>
+  <nav class="nav" id="nav" aria-label="Modules"></nav>
+  <main>
+    <div id="banner"></div>
+    <h1 class="view-title" id="view-title"></h1>
+    <div id="view"></div>
+  </main>
+  <footer class="foot">
+    Research and education only, not investment advice. Data: end-of-day files bundled or imported by you; see Data &amp; Import for provenance.
+    <a href="#/methodology">Methodology</a>
+  </footer>
+
+  <!-- Chart.js (same library and version as the original dashboard) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- calculations (pure, unit-tested in tests/) -->
+  <script src="js/calc/stats.js"></script>
+  <script src="js/calc/options.js"></script>
+  <script src="js/calc/payoff.js"></script>
+  <script src="js/calc/backtest.js"></script>
+  <script src="js/calc/risk.js"></script>
+  <!-- data layer -->
+  <script src="js/data/csv.js"></script>
+  <script src="js/data/normalize.js"></script>
+  <script src="js/data/store.js"></script>
+  <script src="js/data/bundled.js"></script>
+  <script src="js/data/importer.js"></script>
+  <!-- UI -->
+  <script src="js/ui/core.js"></script>
+  <script src="js/ui/shared.js"></script>
+  <script src="js/modules/overview.js"></script>
+  <script src="js/modules/chain.js"></script>
+  <script src="js/modules/greeks.js"></script>
+  <script src="js/modules/futures.js"></script>
+  <script src="js/modules/fii.js"></script>
+  <script src="js/modules/intel.js"></script>
+  <script src="js/modules/backtest.js"></script>
+  <script src="js/modules/risk.js"></script>
+  <script src="js/modules/payoff.js"></script>
+  <script src="js/modules/insights.js"></script>
+  <script src="js/modules/data.js"></script>
+  <script src="js/modules/methodology.js"></script>
+  <script src="js/ui/report.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
