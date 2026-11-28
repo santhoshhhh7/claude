@@ -493,6 +493,7 @@
     <!-- TAB: LIVE -->
     <div class="tab-content active" id="tab-live">
         <div id="liveContent">
+            <div class="text-block info" id="dataStatus">Loading the latest completed market session…</div>
             <div class="kpi-grid">
                 <div class="kpi-card">
                     <div class="kpi-label">Nifty 50</div>
@@ -773,9 +774,9 @@
                 <thead>
                     <tr>
                         <th>Signal</th>
-                        <th>p-value</th>
-                        <th>Holm Threshold</th>
-                        <th>Passes?</th>
+                        <th>Raw p</th>
+                        <th>Holm p</th>
+                        <th>All checks</th>
                     </tr>
                 </thead>
                 <tbody id="checkTable">
@@ -972,7 +973,7 @@
 
     <script>
         // ============ EMBEDDED DATA ============
-        const dailyData = [
+        let dailyData = [
             {Date:"2026-05-25",Spot:24031.7,PCR_Near:1.299,PCR_All:1.259,MaxPain_Near:24000,Support_Strike:24000,Resistance_Strike:25000,VIX:16.7,Expiry_Nearest:"2026-05-26",Days_To_Expiry:1,Net_OI_Chg_Near:40280955,NextDay_Move_pct:-0.491},
             {Date:"2026-05-26",Spot:23913.7,PCR_Near:0.902,PCR_All:0.977,MaxPain_Near:23900,Support_Strike:23900,Resistance_Strike:23950,VIX:16.13,Expiry_Nearest:"2026-05-26",Days_To_Expiry:0,Net_OI_Chg_Near:-61125610,NextDay_Move_pct:-0.027},
             {Date:"2026-05-27",Spot:23907.15,PCR_Near:0.857,PCR_All:1.018,MaxPain_Near:23950,Support_Strike:23000,Resistance_Strike:25000,VIX:14.98,Expiry_Nearest:"2026-06-02",Days_To_Expiry:6,Net_OI_Chg_Near:-11088350,NextDay_Move_pct:-1.503},
@@ -995,7 +996,7 @@
             {Date:"2026-06-22",Spot:24102.9,PCR_Near:0.902,PCR_All:1.015,MaxPain_Near:24100,Support_Strike:24000,Resistance_Strike:24500,VIX:12.84,Expiry_Nearest:"2026-06-23",Days_To_Expiry:1,Net_OI_Chg_Near:-32156780,NextDay_Move_pct:-0.209}
         ];
 
-        const strikeData = [
+        let strikeData = [
             {Date:"2026-06-19",Expiry:"2026-06-23",Strike:23000,Call_OI:85320,Put_OI:1250440},
             {Date:"2026-06-19",Expiry:"2026-06-23",Strike:23500,Call_OI:154920,Put_OI:120265,Call_OI_Chg:36819,Put_OI_Chg:-11459},
             {Date:"2026-06-19",Expiry:"2026-06-23",Strike:24000,Call_OI:187650,Put_OI:213746,Call_OI_Chg:11093,Put_OI_Chg:46413},
@@ -1012,6 +1013,10 @@
             vixRange: null,
             trendLean: null,
             updatedAt: null,
+            latestSessionDate: null,
+            marketState: null,
+            status: null,
+            calls: [],
             news: []
         };
 
@@ -1019,6 +1024,7 @@
         let currentTab = 'live';
         let darkMode = false;
         let charts = {};
+        let signalAnalysisCache = null;
 
         // ============ HELPERS ============
         function escapeHtml(text) {
@@ -1056,8 +1062,101 @@
             }
         }
 
+        function removeLocalStorage(key) {
+            try {
+                localStorage.removeItem(key);
+            } catch (error) {
+                console.warn('LocalStorage unavailable:', error);
+            }
+        }
+
+        function loadCachedLiveData() {
+            const cached = tryLocalStorage('niftyLiveData');
+            if (!cached) return;
+            try {
+                const value = JSON.parse(cached);
+                if (value && typeof value === 'object') liveData = { ...liveData, ...value };
+            } catch (error) {
+                console.warn('Cached live data is invalid:', error);
+                removeLocalStorage('niftyLiveData');
+            }
+        }
+
         function getLastDaysData(n = 20) {
             return dailyData.slice(-n);
+        }
+
+        function parseCsv(text) {
+            const lines = text.trim().split(/\r?\n/);
+            if (lines.length < 2) return [];
+            const headers = lines[0].split(',');
+            return lines.slice(1).map(line => {
+                const values = line.split(',');
+                return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? '']));
+            });
+        }
+
+        function numberOrNull(value) {
+            const number = Number(value);
+            return value === '' || !Number.isFinite(number) ? null : number;
+        }
+
+        async function loadResearchData() {
+            try {
+                const [summaryResponse, strikesResponse] = await Promise.all([
+                    fetch('./data/nifty_pcr_maxpain.csv?t=' + Date.now(), { cache: 'no-store' }),
+                    fetch('./data/nifty_strike_oi.csv?t=' + Date.now(), { cache: 'no-store' })
+                ]);
+                if (!summaryResponse.ok || !strikesResponse.ok) throw new Error('CSV request failed');
+
+                const [summaryText, strikesText] = await Promise.all([
+                    summaryResponse.text(),
+                    strikesResponse.text()
+                ]);
+                const summaryRows = parseCsv(summaryText).map(row => ({
+                    Date: row.Date,
+                    Spot: numberOrNull(row.Spot),
+                    PCR_Near: numberOrNull(row.PCR_Near),
+                    PCR_All: numberOrNull(row.PCR_All),
+                    MaxPain_Near: numberOrNull(row.MaxPain_Near),
+                    Support_Strike: numberOrNull(row.Support_Strike),
+                    Resistance_Strike: numberOrNull(row.Resistance_Strike),
+                    VIX: numberOrNull(row.VIX),
+                    Expiry_Nearest: row.Expiry_Nearest,
+                    Days_To_Expiry: numberOrNull(row.Days_To_Expiry),
+                    Net_OI_Chg_Near: numberOrNull(row.Net_OI_Chg_Near),
+                    NextDay_Move_pct: numberOrNull(row['NextDay_Move_%'])
+                })).filter(row => row.Date && Number.isFinite(row.Spot));
+
+                const strikeRows = parseCsv(strikesText).map(row => ({
+                    Date: row.Date,
+                    Expiry: row.Expiry,
+                    Strike: numberOrNull(row.Strike),
+                    Call_OI: numberOrNull(row.Call_OI),
+                    Put_OI: numberOrNull(row.Put_OI),
+                    Call_OI_Chg: numberOrNull(row.Call_OI_Chg),
+                    Put_OI_Chg: numberOrNull(row.Put_OI_Chg)
+                })).filter(row => row.Date && Number.isFinite(row.Strike));
+
+                if (summaryRows.length >= 20) dailyData = summaryRows;
+                if (strikeRows.length > 0) strikeData = strikeRows;
+                signalAnalysisCache = null;
+                tabRenderers[currentTab]();
+                return true;
+            } catch (error) {
+                console.error('Could not load research CSVs; keeping embedded fallback data:', error);
+                return false;
+            }
+        }
+
+        function getPriceHistory() {
+            const liveSeries = liveData.nifty?.series;
+            if (Array.isArray(liveSeries) && liveSeries.length >= 20) {
+                return liveSeries
+                    .map(item => ({ Date: item.date, Spot: Number(item.close) }))
+                    .filter(item => item.Date && Number.isFinite(item.Spot));
+            }
+            return dailyData.map(item => ({ Date: item.Date, Spot: Number(item.Spot) }));
         }
 
         function createChart(canvasId, config) {
@@ -1082,120 +1181,112 @@
             return new Chart(canvas, config);
         }
 
-        function calculateTrendLean() {
-            if (dailyData.length < 20) return { lean: 'neutral', reason: 'Not enough data' };
-
-            const last = dailyData[dailyData.length - 1];
-            const last5 = dailyData.slice(-5);
-            
-            let ema20 = calculateEMA(20);
-            let ema50 = calculateEMA(50);
-            let rsi = calculateRSI();
-            
-            let bullishSignals = 0;
-            let bearishSignals = 0;
-
-            // EMA 20 > 50: bullish
-            if (ema20 > ema50) bullishSignals++;
-            else bearishSignals++;
-
-            // 5-day return
-            const ret5d = (last.Spot / dailyData[Math.max(0, dailyData.length - 5)].Spot - 1) * 100;
-            if (ret5d > 0) bullishSignals++;
-            else bearishSignals++;
-
-            // RSI
-            if (rsi > 60) bullishSignals++;
-            else if (rsi < 40) bearishSignals++;
-
-            // PCR
-            if (last.PCR_Near > 1.2) bearishSignals++;
-            else if (last.PCR_Near < 0.8) bullishSignals++;
-
-            let lean = 'neutral';
-            let reason = [];
-
-            if (bullishSignals > bearishSignals) {
-                lean = 'up';
-                reason.push(`EMA ${ema20 > ema50 ? '↑' : '↓'}`, `5D return ${ret5d.toFixed(1)}%`, `RSI ${rsi.toFixed(0)}`);
-            } else if (bearishSignals > bullishSignals) {
-                lean = 'down';
-                reason.push(`EMA ${ema20 > ema50 ? '↑' : '↓'}`, `5D return ${ret5d.toFixed(1)}%`, `PCR ${last.PCR_Near.toFixed(2)}`);
+        function emaSeries(values, period) {
+            const result = Array(values.length).fill(null);
+            if (values.length < period) return result;
+            let current = values.slice(0, period).reduce((sum, value) => sum + value, 0) / period;
+            result[period - 1] = current;
+            const multiplier = 2 / (period + 1);
+            for (let index = period; index < values.length; index++) {
+                current = values[index] * multiplier + current * (1 - multiplier);
+                result[index] = current;
             }
-
-            return { lean, reason: reason.join(' · ') };
+            return result;
         }
 
         function calculateEMA(period) {
-            if (dailyData.length < period) return dailyData[dailyData.length - 1].Spot;
-            
-            let sum = 0;
-            for (let i = dailyData.length - period; i < dailyData.length; i++) {
-                sum += dailyData[i].Spot;
+            const closes = getPriceHistory().map(item => item.Spot);
+            const values = emaSeries(closes, period).filter(value => value !== null);
+            return values.length ? values[values.length - 1] : null;
+        }
+
+        function calculateRSISeries(closes, period = 14) {
+            const result = Array(closes.length).fill(null);
+            if (closes.length <= period) return result;
+            const changes = closes.slice(1).map((value, index) => value - closes[index]);
+            let averageGain = changes.slice(0, period).reduce((sum, value) => sum + Math.max(value, 0), 0) / period;
+            let averageLoss = changes.slice(0, period).reduce((sum, value) => sum + Math.max(-value, 0), 0) / period;
+            result[period] = averageLoss === 0 ? 100 : 100 - 100 / (1 + averageGain / averageLoss);
+            for (let index = period; index < changes.length; index++) {
+                averageGain = (averageGain * (period - 1) + Math.max(changes[index], 0)) / period;
+                averageLoss = (averageLoss * (period - 1) + Math.max(-changes[index], 0)) / period;
+                result[index + 1] = averageLoss === 0 ? 100 : 100 - 100 / (1 + averageGain / averageLoss);
             }
-            return sum / period;
+            return result;
         }
 
         function calculateRSI() {
-            if (dailyData.length < 15) return 50;
-            
-            let gains = 0, losses = 0;
-            for (let i = dailyData.length - 14; i < dailyData.length; i++) {
-                const diff = dailyData[i].Spot - dailyData[i - 1].Spot;
-                if (diff > 0) gains += diff;
-                else losses += Math.abs(diff);
-            }
-            
-            const avgGain = gains / 14;
-            const avgLoss = losses / 14;
-            const rs = avgGain / (avgLoss || 1);
-            return 100 - (100 / (1 + rs));
+            const values = calculateRSISeries(getPriceHistory().map(item => item.Spot)).filter(value => value !== null);
+            return values.length ? values[values.length - 1] : null;
         }
 
-        function calculateBollingerBands() {
-            if (dailyData.length < 20) return null;
-            
-            const last20 = dailyData.slice(-20);
-            const avg = last20.reduce((s, d) => s + d.Spot, 0) / 20;
-            const variance = last20.reduce((s, d) => s + Math.pow(d.Spot - avg, 2), 0) / 20;
-            const stdDev = Math.sqrt(variance);
-            
+        function calculateTrendLean() {
+            const history = getPriceHistory();
+            if (history.length < 20) return { lean: 'neutral', reason: 'Not enough price history' };
+            const closes = history.map(item => item.Spot);
+            const ema20 = calculateEMA(20);
+            const ema50 = calculateEMA(50);
+            const rsi = calculateRSI();
+            const return5 = closes.length >= 6 ? (closes.at(-1) / closes.at(-6) - 1) * 100 : null;
+            let score = 0;
+            const reasons = [];
+
+            if (ema20 !== null && ema50 !== null) {
+                score += ema20 > ema50 ? 1 : -1;
+                reasons.push(`EMA20 ${ema20 > ema50 ? 'above' : 'below'} EMA50`);
+            }
+            if (return5 !== null) {
+                score += return5 > 0 ? 1 : return5 < 0 ? -1 : 0;
+                reasons.push(`five-session return ${return5 >= 0 ? '+' : ''}${return5.toFixed(2)}%`);
+            }
+            if (rsi !== null) {
+                score += rsi > 55 ? 1 : rsi < 45 ? -1 : 0;
+                reasons.push(`RSI(14) ${rsi.toFixed(1)}`);
+            }
+
             return {
-                upper: avg + (2 * stdDev),
-                middle: avg,
-                lower: avg - (2 * stdDev)
+                lean: score >= 2 ? 'up' : score <= -2 ? 'down' : 'neutral',
+                reason: reasons.join(' · ')
             };
         }
 
+        function calculateBollingerBands() {
+            const history = getPriceHistory();
+            if (history.length < 20) return null;
+            const values = history.slice(-20).map(item => item.Spot);
+            const middle = values.reduce((sum, value) => sum + value, 0) / values.length;
+            const variance = values.reduce((sum, value) => sum + (value - middle) ** 2, 0) / values.length;
+            const standardDeviation = Math.sqrt(variance);
+            return { upper: middle + 2 * standardDeviation, middle, lower: middle - 2 * standardDeviation };
+        }
+
         function calculateSupertrend() {
-            if (dailyData.length < 10) return 'neutral';
-            
-            const last10 = dailyData.slice(-10);
-            const closes = last10.map(d => d.Spot);
-            const high = Math.max(...closes);
-            const low = Math.min(...closes);
-            const hl2 = (high + low) / 2;
-            
-            const atr = (high - low) * 0.3; // simplified
-            const basicUpper = hl2 + (3 * atr);
-            const basicLower = hl2 - (3 * atr);
-            
-            const current = closes[closes.length - 1];
-            return current > hl2 ? 'up' : 'down';
+            const closes = getPriceHistory().map(item => item.Spot);
+            if (closes.length < 11) return 'neutral';
+            const ranges = closes.slice(1).map((value, index) => Math.abs(value - closes[index]));
+            let atr = ranges.slice(0, 10).reduce((sum, value) => sum + value, 0) / 10;
+            for (const range of ranges.slice(10)) atr = (atr * 9 + range) / 10;
+            const recentAverage = closes.slice(-10).reduce((sum, value) => sum + value, 0) / 10;
+            return closes.at(-1) >= recentAverage - 3 * atr ? 'up' : 'down';
+        }
+
+        function calculateMACDSeries() {
+            const closes = getPriceHistory().map(item => item.Spot);
+            const fast = emaSeries(closes, 12);
+            const slow = emaSeries(closes, 26);
+            const macd = closes.map((_, index) => fast[index] !== null && slow[index] !== null ? fast[index] - slow[index] : null);
+            const compactSignal = emaSeries(macd.filter(value => value !== null), 9);
+            let signalIndex = 0;
+            return macd.map(value => {
+                if (value === null) return null;
+                const signal = compactSignal[signalIndex++];
+                return signal === null ? null : value - signal;
+            });
         }
 
         function calculateMACD() {
-            if (dailyData.length < 26) return null;
-            
-            let ema12 = 0, ema26 = 0;
-            const last26 = dailyData.slice(-26).map(d => d.Spot);
-            
-            // Simplified MACD
-            const short = last26.slice(-12).reduce((s, v) => s + v) / 12;
-            const long = last26.reduce((s, v) => s + v) / 26;
-            const macd = short - long;
-            
-            return macd;
+            const values = calculateMACDSeries().filter(value => value !== null);
+            return values.length ? values[values.length - 1] : null;
         }
 
         // ============ TAB SWITCHING ============
@@ -1252,6 +1343,15 @@
             const sensex = liveData.sensex;
             const bankNifty = liveData.bankNifty;
             const vix = liveData.vix || { price: last.VIX, delta: 0 };
+            const statusParts = [
+                `Prices as of ${liveData.latestSessionDate || nifty.session_date || last.Date}`,
+                `options research through ${last.Date}`
+            ];
+            if (liveData.marketState) statusParts.push(liveData.marketState.replaceAll('-', ' '));
+            if (liveData.status === 'partial' || vix.stale) statusParts.push('some sources are using the last good value');
+            const dataStatus = document.getElementById('dataStatus');
+            dataStatus.textContent = statusParts.join(' · ') + '. Educational, not investment advice.';
+            dataStatus.className = `text-block ${liveData.status === 'partial' || vix.stale ? 'warning' : 'info'}`;
 
             document.getElementById('niftyPrice').textContent = formatNumber(nifty.price);
             document.getElementById('niftyDelta').textContent = `${nifty.delta >= 0 ? '↑' : '↓'} ${formatNumber(Math.abs(nifty.delta), 2)}%`;
@@ -1284,26 +1384,28 @@
             leanEl.className = `lean ${lean}`;
             document.getElementById('trendReasons').textContent = reasons;
 
-            // Track record
             const trackRecord = document.getElementById('trackRecord');
             trackRecord.innerHTML = '';
-            getLastDaysData(20).forEach(day => {
-                const nextDay = dailyData[dailyData.indexOf(day) + 1];
-                if (!nextDay) return;
-                
-                const actual = nextDay.NextDay_Move_pct >= 0 ? 'UP' : 'DOWN';
-                const lean = day.NextDay_Move_pct >= 0 ? 'UP' : 'DOWN';
-                const correct = actual === lean ? '✓' : '✗';
-                
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${day.Date}</td>
-                    <td class="${lean === 'UP' ? 'up' : 'down'}" style="font-weight:bold">${lean}</td>
-                    <td class="${actual === 'UP' ? 'up' : 'down'}" style="font-weight:bold">${actual}</td>
-                    <td>${correct}</td>
-                `;
-                trackRecord.appendChild(row);
-            });
+            const calls = Array.isArray(liveData.calls) ? liveData.calls.slice(-20).reverse() : [];
+            if (calls.length === 0) {
+                trackRecord.innerHTML = '<tr><td colspan="4">The evening log starts after the first successful post-close update.</td></tr>';
+            } else {
+                calls.forEach(call => {
+                    const lean = String(call.lean || 'neutral').toUpperCase();
+                    const result = call.resolved
+                        ? `${call.realized_move_pct >= 0 ? '+' : ''}${formatNumber(call.realized_move_pct, 2)}%`
+                        : 'Pending';
+                    const correct = call.correct === true ? '✓' : call.correct === false ? '✗' : '—';
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${escapeHtml(call.input_session_date)}</td>
+                        <td class="${lean === 'UP' ? 'up' : lean === 'DOWN' ? 'down' : ''}" style="font-weight:bold">${escapeHtml(lean)}</td>
+                        <td>${escapeHtml(result)}</td>
+                        <td>${correct}</td>
+                    `;
+                    trackRecord.appendChild(row);
+                });
+            }
 
             // Headlines
             renderHeadlines();
@@ -1316,9 +1418,9 @@
             const ctx = document.getElementById('miniChart');
             if (!ctx) return;
 
-            const last5 = dailyData.slice(-5);
-            const labels = last5.map(d => d.Date);
-            const data = last5.map(d => d.Spot);
+            const last5 = getPriceHistory().slice(-5);
+            const labels = last5.map(item => item.Date);
+            const data = last5.map(item => item.Spot);
 
             if (charts.mini) charts.mini.destroy();
             
@@ -1546,7 +1648,7 @@
                 const nextDay = dailyData[dailyData.indexOf(day) + 1];
                 if (!nextDay) return;
 
-                const range1 = day.Spot * (day.VIX / 100);
+                const range1 = day.Spot * (day.VIX / 100) / Math.sqrt(252);
                 const actualMove = nextDay.Spot - day.Spot;
                 const isUp = actualMove >= 0 ? 'Yes' : 'No';
 
@@ -1566,26 +1668,34 @@
         function renderSignalsTab() {
             const tbody = document.getElementById('signalsTable');
             tbody.innerHTML = '';
+            const realized = dailyData.filter(row => Number.isFinite(row.NextDay_Move_pct));
+            if (realized.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">No realized next-session outcomes are available.</td></tr>';
+                return;
+            }
 
-            // Simplified signal tests
-            const signals = [
-                { name: 'PCR < 0.8', probUp: 0.56, baseline: 0.50 },
-                { name: 'PCR > 1.2', probUp: 0.42, baseline: 0.50 },
-                { name: 'Bottom Market Half', probUp: 0.52, baseline: 0.50 },
-                { name: 'Top Market Half', probUp: 0.48, baseline: 0.50 },
-                { name: 'Non-Expiry Day', probUp: 0.51, baseline: 0.50 }
+            const baseline = realized.filter(row => row.NextDay_Move_pct > 0).length / realized.length;
+            const medianVix = [...realized].sort((a, b) => a.VIX - b.VIX)[Math.floor(realized.length / 2)].VIX;
+            const definitions = [
+                ['PCR below 0.8', row => row.PCR_Near < 0.8],
+                ['PCR above 1.2', row => row.PCR_Near > 1.2],
+                ['Spot below Max Pain', row => row.Spot < row.MaxPain_Near],
+                ['More than 1 day to expiry', row => row.Days_To_Expiry > 1],
+                [`VIX above median (${formatNumber(medianVix, 1)})`, row => row.VIX > medianVix]
             ];
 
-            signals.forEach(signal => {
-                const diff = (signal.probUp - signal.baseline) * 100;
-                const passes = false; // No simplified signal is confirmed without all Check-tab tests.
-
+            definitions.forEach(([name, predicate]) => {
+                const sample = realized.filter(predicate);
+                const probability = sample.length
+                    ? sample.filter(row => row.NextDay_Move_pct > 0).length / sample.length
+                    : null;
+                const difference = probability === null ? null : (probability - baseline) * 100;
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td><strong>${escapeHtml(signal.name)}</strong></td>
-                    <td>${formatPercent(signal.probUp)}</td>
-                    <td>${diff > 0 ? '+' : ''}${formatNumber(diff, 1)}pp</td>
-                    <td style="color:${passes ? 'var(--up)' : 'var(--down)'};">${passes ? '✓' : '✗'}</td>
+                    <td><strong>${escapeHtml(name)}</strong><br><span style="color:var(--muted)">${sample.length} days</span></td>
+                    <td>${probability === null ? '—' : formatPercent(probability)}</td>
+                    <td>${difference === null ? '—' : `${difference > 0 ? '+' : ''}${formatNumber(difference, 1)}pp`}</td>
+                    <td style="color:var(--down);">✗ Not confirmed</td>
                 `;
                 tbody.appendChild(row);
             });
@@ -1593,25 +1703,27 @@
 
         // ============ RENDER TRENDS TAB ============
         function renderTrendsTab() {
-            const last = dailyData[dailyData.length - 1];
-            document.getElementById('ema20').textContent = dailyData.length >= 20
+            const history = getPriceHistory();
+            const last = history[history.length - 1];
+            document.getElementById('ema20').textContent = history.length >= 20
                 ? formatNumber(calculateEMA(20))
                 : 'Need 20 days';
-            document.getElementById('ema50').textContent = dailyData.length >= 50
+            document.getElementById('ema50').textContent = history.length >= 50
                 ? formatNumber(calculateEMA(50))
                 : 'Need 50 days';
-            document.getElementById('rsi').textContent = dailyData.length >= 15
+            document.getElementById('rsi').textContent = history.length >= 15
                 ? formatNumber(calculateRSI())
                 : 'Need 15 days';
 
-            const ret5d = (last.Spot / dailyData[Math.max(0, dailyData.length - 5)].Spot - 1) * 100;
+            const ret5d = history.length >= 6 ? (last.Spot / history.at(-6).Spot - 1) * 100 : 0;
             document.getElementById('ret5d').textContent = `${ret5d >= 0 ? '↑' : '↓'} ${formatNumber(Math.abs(ret5d), 2)}%`;
             renderTrendsChart();
         }
 
         // ============ RENDER INDICATORS TAB ============
         function renderIndicatorsTab() {
-            const last = dailyData[dailyData.length - 1];
+            const priceHistory = getPriceHistory();
+            const last = priceHistory[priceHistory.length - 1];
             renderBBChart();
             renderRSIChart();
             renderMACDChart();
@@ -1621,10 +1733,10 @@
             const bands = calculateBollingerBands();
             const indicators = [
                 { name: 'Bollinger Upper Touch', signal: bands ? bands.upper > last.Spot : null, accuracy: 0.48 },
-                { name: 'RSI > 70', signal: dailyData.length >= 15 ? calculateRSI() > 70 : null, accuracy: 0.46 },
-                { name: 'MACD Positive', signal: dailyData.length >= 26 ? calculateMACD() > 0 : null, accuracy: null },
-                { name: 'EMA 20 > 50', signal: dailyData.length >= 50 ? calculateEMA(20) > calculateEMA(50) : null, accuracy: null },
-                { name: 'Supertrend Up', signal: dailyData.length >= 10 ? calculateSupertrend() === 'up' : null, accuracy: 0.49 }
+                { name: 'RSI > 70', signal: getPriceHistory().length >= 15 ? calculateRSI() > 70 : null, accuracy: 0.46 },
+                { name: 'MACD Positive', signal: getPriceHistory().length >= 35 ? calculateMACD() > 0 : null, accuracy: null },
+                { name: 'EMA 20 > 50', signal: getPriceHistory().length >= 50 ? calculateEMA(20) > calculateEMA(50) : null, accuracy: null },
+                { name: 'Supertrend Up', signal: getPriceHistory().length >= 11 ? calculateSupertrend() === 'up' : null, accuracy: 0.49 }
             ];
 
             indicators.forEach(ind => {
@@ -1645,19 +1757,11 @@
             const ctx = document.getElementById('trendsChart');
             if (!ctx) return;
 
-            const last60 = dailyData.slice(-60);
-            const labels = last60.map(d => d.Date);
-            const spots = last60.map(d => d.Spot);
-            const ema20 = last60.map((d, i) => {
-                const start = Math.max(0, i - 19);
-                const subset = last60.slice(start, i + 1);
-                return subset.reduce((s, x) => s + x.Spot, 0) / subset.length;
-            });
-            const ema50 = last60.map((d, i) => {
-                const start = Math.max(0, i - 49);
-                const subset = last60.slice(start, i + 1);
-                return subset.reduce((s, x) => s + x.Spot, 0) / subset.length;
-            });
+            const last60 = getPriceHistory().slice(-60);
+            const labels = last60.map(item => item.Date);
+            const spots = last60.map(item => item.Spot);
+            const ema20 = emaSeries(spots, 20);
+            const ema50 = emaSeries(spots, 50);
 
             if (charts.trends) charts.trends.destroy();
 
@@ -1709,14 +1813,22 @@
             const ctx = document.getElementById('bbChart');
             if (!ctx) return;
 
-            const last30 = dailyData.slice(-30);
-            const labels = last30.map(d => d.Date);
-            const spots = last30.map(d => d.Spot);
-
-            const bb = calculateBollingerBands();
-            const bbUpper = Array(spots.length).fill(bb.upper);
-            const bbMiddle = Array(spots.length).fill(bb.middle);
-            const bbLower = Array(spots.length).fill(bb.lower);
+            const last60 = getPriceHistory().slice(-60);
+            const labels = last60.map(item => item.Date);
+            const spots = last60.map(item => item.Spot);
+            const bbMiddle = spots.map((_, index) => {
+                if (index < 19) return null;
+                const window = spots.slice(index - 19, index + 1);
+                return window.reduce((sum, value) => sum + value, 0) / 20;
+            });
+            const deviations = spots.map((_, index) => {
+                if (index < 19) return null;
+                const window = spots.slice(index - 19, index + 1);
+                const middle = bbMiddle[index];
+                return Math.sqrt(window.reduce((sum, value) => sum + (value - middle) ** 2, 0) / 20);
+            });
+            const bbUpper = bbMiddle.map((middle, index) => middle === null ? null : middle + 2 * deviations[index]);
+            const bbLower = bbMiddle.map((middle, index) => middle === null ? null : middle - 2 * deviations[index]);
 
             if (charts.bb) charts.bb.destroy();
 
@@ -1774,25 +1886,9 @@
             const ctx = document.getElementById('rsiChart');
             if (!ctx) return;
 
-            const last30 = dailyData.slice(-30);
-            const labels = last30.map(d => d.Date);
-            const rsiValues = last30.map((d, i) => {
-                // Simplified RSI for each point
-                const start = Math.max(0, dailyData.indexOf(d) - 13);
-                const subset = dailyData.slice(start, dailyData.indexOf(d) + 1);
-                if (subset.length < 2) return 50;
-                
-                let gains = 0, losses = 0;
-                for (let j = 1; j < subset.length; j++) {
-                    const diff = subset[j].Spot - subset[j - 1].Spot;
-                    if (diff > 0) gains += diff;
-                    else losses += Math.abs(diff);
-                }
-                const avgGain = gains / 14;
-                const avgLoss = losses / 14;
-                const rs = avgGain / (avgLoss || 1);
-                return 100 - (100 / (1 + rs));
-            });
+            const last60 = getPriceHistory().slice(-60);
+            const labels = last60.map(item => item.Date);
+            const rsiValues = calculateRSISeries(last60.map(item => item.Spot));
 
             if (charts.rsi) charts.rsi.destroy();
 
@@ -1828,7 +1924,8 @@
             const oldMessage = container.querySelector('.chart-error');
             if (oldMessage) oldMessage.remove();
 
-            if (dailyData.length < 26) {
+            const history = getPriceHistory();
+            if (history.length < 35) {
                 if (charts.macd) {
                     charts.macd.destroy();
                     charts.macd = null;
@@ -1836,24 +1933,16 @@
                 ctx.hidden = true;
                 const message = document.createElement('p');
                 message.className = 'chart-error';
-                message.textContent = `MACD needs at least 26 trading days; ${dailyData.length} are embedded.`;
+                message.textContent = `MACD needs at least 35 trading days; ${history.length} are available.`;
                 message.style.cssText = 'color:var(--muted);font-size:12px;padding:16px 0;text-align:center';
                 container.appendChild(message);
                 return;
             }
 
             ctx.hidden = false;
-            const last30 = dailyData.slice(-30);
-            const labels = last30.map(d => d.Date);
-            const macdValues = last30.map((d, i) => {
-                const start = Math.max(0, dailyData.indexOf(d) - 25);
-                const subset = dailyData.slice(start, dailyData.indexOf(d) + 1);
-                if (subset.length < 26) return 0;
-                
-                const short = subset.slice(-12).reduce((s, x) => s + x.Spot, 0) / 12;
-                const long = subset.reduce((s, x) => s + x.Spot, 0) / subset.length;
-                return short - long;
-            });
+            const last60 = history.slice(-60);
+            const labels = last60.map(item => item.Date);
+            const macdValues = calculateMACDSeries().slice(-last60.length);
 
             if (charts.macd) charts.macd.destroy();
 
@@ -1878,33 +1967,127 @@
         }
 
         // ============ RENDER CHECK TAB ============
+        function pearson(x, y) {
+            if (x.length < 3 || x.length !== y.length) return 0;
+            const meanX = x.reduce((sum, value) => sum + value, 0) / x.length;
+            const meanY = y.reduce((sum, value) => sum + value, 0) / y.length;
+            let numerator = 0;
+            let sumX = 0;
+            let sumY = 0;
+            for (let index = 0; index < x.length; index++) {
+                const dx = x[index] - meanX;
+                const dy = y[index] - meanY;
+                numerator += dx * dy;
+                sumX += dx * dx;
+                sumY += dy * dy;
+            }
+            const denominator = Math.sqrt(sumX * sumY);
+            return denominator ? numerator / denominator : 0;
+        }
+
+        function seededRandom(seed) {
+            return () => {
+                seed |= 0;
+                seed = seed + 0x6D2B79F5 | 0;
+                let value = Math.imul(seed ^ seed >>> 15, 1 | seed);
+                value = value + Math.imul(value ^ value >>> 7, 61 | value) ^ value;
+                return ((value ^ value >>> 14) >>> 0) / 4294967296;
+            };
+        }
+
+        function permutationPValue(x, y, seed, shuffles = 3000) {
+            const observed = Math.abs(pearson(x, y));
+            const shuffled = [...y];
+            const random = seededRandom(seed);
+            let extreme = 0;
+            for (let iteration = 0; iteration < shuffles; iteration++) {
+                for (let index = shuffled.length - 1; index > 0; index--) {
+                    const target = Math.floor(random() * (index + 1));
+                    [shuffled[index], shuffled[target]] = [shuffled[target], shuffled[index]];
+                }
+                if (Math.abs(pearson(x, shuffled)) >= observed) extreme++;
+            }
+            return (extreme + 1) / (shuffles + 1);
+        }
+
+        function median(values) {
+            const sorted = [...values].sort((a, b) => a - b);
+            const middle = Math.floor(sorted.length / 2);
+            return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+        }
+
+        function calculateSignalChecks() {
+            if (signalAnalysisCache) return signalAnalysisCache;
+            const definitions = [
+                ['PCR near', row => row.PCR_Near],
+                ['PCR all expiries', row => row.PCR_All],
+                ['Spot vs Max Pain', row => row.Spot - row.MaxPain_Near],
+                ['Net OI change', row => row.Net_OI_Chg_Near],
+                ['India VIX', row => row.VIX]
+            ];
+            const realized = dailyData.filter(row => Number.isFinite(row.NextDay_Move_pct));
+            const results = definitions.map(([name, accessor], signalIndex) => {
+                const rows = realized.map(row => ({ x: accessor(row), y: row.NextDay_Move_pct }))
+                    .filter(row => Number.isFinite(row.x) && Number.isFinite(row.y));
+                const x = rows.map(row => row.x);
+                const y = rows.map(row => row.y);
+                const correlation = pearson(x, y);
+                const rawP = permutationPValue(x, y, 42 + signalIndex * 101);
+
+                const withoutLast20 = rows.slice(0, Math.max(0, rows.length - 20));
+                const holdoutCorrelation = pearson(
+                    withoutLast20.map(row => row.x),
+                    withoutLast20.map(row => row.y)
+                );
+                const noise = withoutLast20.length ? 2 / Math.sqrt(withoutLast20.length) : Infinity;
+                const holdoutPass = Math.sign(holdoutCorrelation) === Math.sign(correlation)
+                    && Math.abs(holdoutCorrelation) > noise;
+
+                const split = Math.floor(rows.length * 0.6);
+                const training = rows.slice(0, split);
+                const testing = rows.slice(split);
+                const trainingCorrelation = pearson(training.map(row => row.x), training.map(row => row.y));
+                const threshold = median(training.map(row => row.x));
+                const correct = testing.filter(row => {
+                    const guessUp = trainingCorrelation >= 0 ? row.x >= threshold : row.x < threshold;
+                    return guessUp === (row.y > 0);
+                }).length;
+                const accuracy = testing.length ? correct / testing.length : 0;
+                const baseline = testing.length ? testing.filter(row => row.y > 0).length / testing.length : 0;
+                const standardError = testing.length ? Math.sqrt(baseline * (1 - baseline) / testing.length) : Infinity;
+                const rulePass = accuracy > baseline + 2 * standardError;
+                return { name, correlation, rawP, holdoutPass, rulePass, accuracy, baseline, n: rows.length };
+            });
+
+            const ordered = [...results].sort((a, b) => a.rawP - b.rawP);
+            let priorAdjusted = 0;
+            ordered.forEach((result, rank) => {
+                result.holmP = Math.max(priorAdjusted, Math.min(1, (ordered.length - rank) * result.rawP));
+                priorAdjusted = result.holmP;
+            });
+            results.forEach(result => {
+                result.passes = result.holmP < 0.05 && result.holdoutPass && result.rulePass;
+            });
+            signalAnalysisCache = results;
+            return results;
+        }
+
         function renderCheckTab() {
             const tbody = document.getElementById('checkTable');
-            if (tbody) {
-                tbody.innerHTML = '';
-
-                const signals = [
-                    { name: 'PCR Signal', pValue: 0.087, passes: false },
-                    { name: 'Market Halves', pValue: 0.156, passes: false },
-                    { name: 'Supertrend', pValue: 0.045, passes: false },
-                    { name: 'VIX Zone', pValue: 0.312, passes: false },
-                    { name: 'RSI Extreme', pValue: 0.278, passes: false }
-                ];
-
-                signals.forEach((signal, i) => {
-                    const threshold = 0.05 / (signals.length - i); // Holm correction
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td><strong>${escapeHtml(signal.name)}</strong></td>
-                        <td>${formatNumber(signal.pValue, 3)}</td>
-                        <td>${formatNumber(threshold, 3)}</td>
-                        <td style="color:${signal.passes ? 'var(--up)' : 'var(--down)'};">${signal.passes ? '✓' : '✗'}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-
-                document.getElementById('passingSignals').textContent = signals.filter(s => s.passes).length + ' / ' + signals.length;
-            }
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            const results = calculateSignalChecks();
+            results.forEach(result => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${escapeHtml(result.name)}</strong><br><span style="color:var(--muted)">r ${formatNumber(result.correlation, 2)} · ${result.n} days · rule ${formatPercent(result.accuracy)} vs ${formatPercent(result.baseline)}</span></td>
+                    <td>${formatNumber(result.rawP, 3)}</td>
+                    <td>${formatNumber(result.holmP, 3)}</td>
+                    <td style="color:${result.passes ? 'var(--up)' : 'var(--down)'};">${result.passes ? '✓' : '✗'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+            document.getElementById('passingSignals').textContent = results.filter(result => result.passes).length + ' / ' + results.length;
         }
 
         // ============ RENDER NEWS TAB ============
@@ -1935,13 +2118,17 @@
                 return;
             }
 
-            newsContainer.innerHTML = liveData.news.map(n => `
-                <div class="news-item">
-                    <div class="news-category">${escapeHtml(n.category)}</div>
-                    <div class="news-title">${escapeHtml(n.title)}</div>
-                    <div class="news-date">${escapeHtml(n.date)}</div>
-                </div>
-            `).join('');
+            newsContainer.innerHTML = liveData.news.map(n => {
+                const link = /^https?:\/\//.test(String(n.link || '')) ? String(n.link) : '';
+                return `
+                    <div class="news-item">
+                        <div class="news-category">${escapeHtml(n.category)}</div>
+                        <div class="news-title">${escapeHtml(n.title)}</div>
+                        <div class="news-date">${escapeHtml(n.source || '')}${n.source ? ' · ' : ''}${escapeHtml(String(n.date || '').slice(0, 10))}</div>
+                        ${link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" style="color:var(--text)">Open source</a>` : ''}
+                    </div>
+                `;
+            }).join('');
         }
 
         // ============ AUTO-FETCH LIVE DATA ============
@@ -1951,19 +2138,26 @@
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
 
-                if (data.indices?.nifty50) liveData.nifty = data.indices.nifty50;
-                if (data.indices?.sensex) liveData.sensex = data.indices.sensex;
-                if (data.indices?.banknifty) liveData.bankNifty = data.indices.banknifty;
-                if (data.vix) {
+                const validIndex = value => value && Number.isFinite(Number(value.price)) && Number(value.price) > 0;
+                if (validIndex(data.indices?.nifty50)) liveData.nifty = data.indices.nifty50;
+                if (validIndex(data.indices?.sensex)) liveData.sensex = data.indices.sensex;
+                if (validIndex(data.indices?.banknifty)) liveData.bankNifty = data.indices.banknifty;
+                if (data.vix && Number.isFinite(Number(data.vix.value)) && Number(data.vix.value) >= 5) {
                     liveData.vix = {
+                        ...data.vix,
                         price: Number(data.vix.value),
                         delta: Number(data.vix.change || 0)
                     };
                 }
                 liveData.vixRange = data.vix_range || null;
                 liveData.trendLean = data.trend_lean || null;
-                liveData.updatedAt = data.timestamp || data.log?.last_update || null;
+                liveData.updatedAt = data.generated_at_ist || data.timestamp || data.log?.last_update || null;
+                liveData.latestSessionDate = data.latest_session_date || liveData.nifty?.session_date || null;
+                liveData.marketState = data.market_state || null;
+                liveData.status = data.log?.status || null;
+                liveData.calls = Array.isArray(data.calls) ? data.calls : liveData.calls;
                 liveData.news = Array.isArray(data.news) ? data.news : liveData.news;
+                tryLocalStorage('niftyLiveData', JSON.stringify(liveData));
 
                 tabRenderers[currentTab]();
                 return true;
@@ -1973,24 +2167,23 @@
             }
         }
 
-        fetchLiveData();
-        setInterval(fetchLiveData, 60000);
         document.getElementById('updateBtn').addEventListener('click', async () => {
             const btn = document.getElementById('updateBtn');
             const originalText = btn.textContent;
             btn.textContent = '⟳ Fetching...';
             btn.disabled = true;
 
-            const updated = await fetchLiveData();
-            btn.textContent = updated ? '✓ Updated' : '✗ Kept last data';
+            const [liveUpdated, researchUpdated] = await Promise.all([fetchLiveData(), loadResearchData()]);
+            btn.textContent = liveUpdated || researchUpdated ? '✓ Updated' : '✗ Kept last data';
             setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
         });
 
         // ============ RESET ============
         document.getElementById('resetBtn').addEventListener('click', () => {
             if (confirm('Clear all cached data?')) {
-                tryLocalStorage('dashboardState', null);
-                tryLocalStorage('lastUpdate', null);
+                removeLocalStorage('dashboardState');
+                removeLocalStorage('lastUpdate');
+                removeLocalStorage('niftyLiveData');
                 location.reload();
             }
         });
@@ -2024,8 +2217,11 @@
         });
 
         // ============ INIT ============
+        loadCachedLiveData();
         renderLiveTab();
-        renderCheckTab();
+        loadResearchData();
+        fetchLiveData();
+        setInterval(fetchLiveData, 60000);
     </script>
 </body>
 </html>
