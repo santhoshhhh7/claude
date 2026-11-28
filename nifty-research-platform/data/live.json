@@ -1,34 +1,34 @@
 {
-  "timestamp": "2026-06-19T14:30:00+05:30",
+  "timestamp": "2026-11-28T13:38:07.701220",
   "market_hours_ist": "09:15 - 15:30",
   "indices": {
     "nifty50": {
-      "price": 24013.1,
-      "delta": -0.641,
+      "price": 25607.2,
+      "delta": -1.07,
       "currency": "INR"
     },
     "sensex": {
-      "price": 73400,
-      "delta": -0.5,
+      "price": 83339.26,
+      "delta": -1.17,
       "currency": "INR"
     },
     "banknifty": {
-      "price": 51200,
-      "delta": -0.3,
+      "price": 63040.9,
+      "delta": -0.78,
       "currency": "INR"
     }
   },
   "vix": {
-    "value": 12.97,
-    "change": -0.05
+    "value": 1.21,
+    "change": -0.11
   },
   "vix_range": {
-    "range_1sigma": 240,
-    "range_2sigma": 480,
-    "lower_1sigma": 23773,
-    "upper_1sigma": 24253,
-    "lower_2sigma": 23533,
-    "upper_2sigma": 24493
+    "range_1sigma": 309.85,
+    "range_2sigma": 619.69,
+    "lower_1sigma": 25297.35,
+    "upper_1sigma": 25917.05,
+    "lower_2sigma": 24987.51,
+    "upper_2sigma": 26226.89
   },
   "trend_lean": {
     "lean": "neutral",
@@ -41,26 +41,38 @@
   },
   "news": [
     {
-      "title": "Nifty Options Positioning: What's the Lean?",
+      "title": "Higher Prices Test Holiday Shoppers",
       "category": "Market",
-      "date": "2026-06-19",
-      "link": "#"
+      "date": "Sat, 28 No",
+      "link": "https://www.bloomberg.com/news/videos/2026-11-28/higher-prices-test-holiday-shoppers-video"
     },
     {
-      "title": "Understanding Open Interest Concentration",
-      "category": "Strategy",
-      "date": "2026-06-18",
-      "link": "#"
+      "title": "India’s SEBI Weighs Exchange Platform for Pre-IPO Shares",
+      "category": "Market",
+      "date": "Sat, 28 No",
+      "link": "https://www.bloomberg.com/news/articles/2026-11-28/india-s-sebi-weighs-exchange-platform-for-pre-ipo-shares"
     },
     {
-      "title": "When Markets Gap: Managing Overnight Risk",
-      "category": "Risk",
-      "date": "2026-06-17",
-      "link": "#"
+      "title": "Modi Nears Majority Needed to Increase India’s Parliament Seats",
+      "category": "Market",
+      "date": "Sat, 28 No",
+      "link": "https://www.bloomberg.com/news/articles/2026-11-28/modi-nears-majority-needed-to-increase-india-s-parliament-seats"
+    },
+    {
+      "title": "Norway’s Wealth Fund Again Votes No to Musk’s Tesla Pay Package",
+      "category": "Market",
+      "date": "Sat, 28 No",
+      "link": "https://www.bloomberg.com/news/articles/2026-11-28/norway-s-wealth-fund-again-votes-no-to-musk-s-tesla-pay-package"
+    },
+    {
+      "title": "Plunging Fuel Prices Bring Relief for Drivers and Central Banks",
+      "category": "Market",
+      "date": "Sat, 28 No",
+      "link": "https://www.bloomberg.com/news/articles/2026-11-28/plunging-fuel-prices-bring-relief-for-drivers-and-central-banks"
     }
   ],
   "log": {
-    "last_update": "2026-06-19T14:30:00+05:30",
+    "last_update": "2026-11-28T13:39:10.065818",
     "status": "success",
     "message": "Data fetched successfully during market hours"
   }
