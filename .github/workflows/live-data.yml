@@ -2,10 +2,17 @@ name: Update live market data
 
 on:
   schedule:
-    # Every 15 minutes Mon-Fri during market hours (IST)
-    # IST is UTC+5:30, so 09:15 IST = 03:45 UTC, 15:30 IST = 10:00 UTC
-    - cron: '0,15,30,45 3-9 * * 1-5'  # 03:45-10:00 UTC = 09:15-15:30 IST
-  workflow_dispatch:  # Allow manual trigger
+    # Every 15 minutes from 09:15 through 15:30 IST, Monday-Friday.
+    - cron: '45 3 * * 1-5'
+    - cron: '0,15,30,45 4-9 * * 1-5'
+    - cron: '0 10 * * 1-5'
+    # One post-close run gives Yahoo time to publish the completed daily bar.
+    - cron: '15 10 * * 1-5'
+  workflow_dispatch:
+
+concurrency:
+  group: nifty-live-data
+  cancel-in-progress: false
 
 jobs:
   update-data:
@@ -14,45 +21,70 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Check out the GitHub Pages branch
+        uses: actions/checkout@v7
+        with:
+          ref: nifty-research-platform
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
+          cache: pip
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install yfinance feedparser
+          python -m pip install yfinance==1.8.0 feedparser==6.0.14
 
-      - name: Fetch live data
+      - name: Fetch latest completed market session
         working-directory: nifty-research-platform
         run: python scripts/fetch_live.py
 
-      - name: Check if data changed
-        id: check_changes
+      - name: Validate generated market data
         run: |
-          if git diff --quiet nifty-research-platform/data/live.json; then
-            echo "changed=false" >> $GITHUB_OUTPUT
+          python - <<'PY'
+          import json
+          import math
+          from pathlib import Path
+
+          path = Path('nifty-research-platform/data/live.json')
+          data = json.loads(path.read_text(encoding='utf-8'))
+          assert data.get('schema_version') == 2
+          assert data.get('latest_session_date')
+          for key in ('nifty50', 'sensex', 'banknifty'):
+              value = float(data['indices'][key]['price'])
+              assert math.isfinite(value) and value > 0, key
+              assert data['indices'][key].get('session_date')
+          vix = float(data['vix']['value'])
+          assert 5 <= vix <= 100
+          assert float(data['vix_range']['range_1sigma']) > 0
+          assert len(data['indices']['nifty50'].get('series', [])) >= 50
+          print('Validated session', data['latest_session_date'])
+          PY
+
+      - name: Check whether data changed
+        id: changes
+        run: |
+          if git diff --quiet -- nifty-research-platform/data/live.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
-            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Commit and push
-        if: steps.check_changes.outputs.changed == 'true'
+      - name: Commit and push updated JSON
+        if: steps.changes.outputs.changed == 'true'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add nifty-research-platform/data/live.json
           git commit -m "chore: update live market data at $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
-          git push
+          git push origin HEAD:nifty-research-platform
 
-      - name: Log status
+      - name: Report status
         run: |
-          if [ "${{ steps.check_changes.outputs.changed }}" == "true" ]; then
-            echo "✓ Data updated and committed"
+          if [ "${{ steps.changes.outputs.changed }}" = "true" ]; then
+            echo "Live market data was validated and pushed to the Pages branch."
           else
-            echo "✓ No changes in data"
+            echo "The generated market data matches the Pages branch."
           fi
