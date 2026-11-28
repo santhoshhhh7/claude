@@ -1,0 +1,52 @@
+{
+  "project": {
+    "title": "Hypothetical Acquisition of Mrs. Bectors Food Specialities by Tata Consumer Products",
+    "valuation_date": "2026-11-27",
+    "currency": "INR crore except per-share data",
+    "disclaimer": "Hypothetical educational case study. This is not an announced transaction or investment advice."
+  },
+  "historical": {
+    "tata_consumer": {
+      "FY2024": {"revenue": 15206.0, "ebitda": 2323.0, "pat": 1215.0},
+      "FY2025": {"revenue": 17618.0, "ebitda": 2502.0, "pat": 1287.0},
+      "FY2026": {"revenue": 20290.0, "ebitda": 2815.0, "pat": 1547.0}
+    },
+    "mrs_bectors": {
+      "FY2024": {"revenue": 1643.0, "ebitda": 242.5, "pat": 140.4},
+      "FY2025": {"revenue": 1873.9, "ebitda": 251.5, "pat": 143.2},
+      "FY2026": {"revenue": 2043.6, "ebitda": 257.7, "pat": 140.9}
+    }
+  },
+  "market_inputs": {
+    "target_share_price": 228.76,
+    "target_shares_crore": 30.7,
+    "target_cash": 180.0,
+    "target_debt": 75.0,
+    "acquirer_shares_crore": 98.91,
+    "offer_premium": 0.20,
+    "cash_funding_pct": 0.50,
+    "debt_funding_pct": 0.50,
+    "new_debt_interest_rate": 0.08,
+    "tax_rate": 0.252
+  },
+  "dcf": {
+    "revenue_growth": [0.12, 0.11, 0.10, 0.09, 0.08],
+    "ebitda_margin": [0.13, 0.134, 0.138, 0.142, 0.145],
+    "depreciation_pct_revenue": 0.04,
+    "capex_pct_revenue": 0.045,
+    "change_nwc_pct_incremental_revenue": 0.03,
+    "wacc": 0.095,
+    "terminal_growth": 0.05
+  },
+  "comps": [
+    {"company": "Britannia Industries", "ev_ebitda": 34.0},
+    {"company": "Bikaji Foods International", "ev_ebitda": 39.0},
+    {"company": "Prataap Snacks", "ev_ebitda": 17.0},
+    {"company": "Foods & Inns", "ev_ebitda": 14.0}
+  ],
+  "synergy_scenarios": {
+    "Low": 0.02,
+    "Base": 0.03,
+    "High": 0.04
+  }
+}

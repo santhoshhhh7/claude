@@ -1,0 +1,197 @@
+{
+  "dcf": {
+    "forecast": [
+      {
+        "year": "FY2027",
+        "growth": 0.12,
+        "revenue": 2288.8320000000003,
+        "ebitda_margin": 0.13,
+        "ebitda": 297.54816000000005,
+        "depreciation": 91.55328000000002,
+        "ebit": 205.99488000000002,
+        "nopat": 154.08417024000002,
+        "capex": 102.99744000000001,
+        "change_nwc": 7.356960000000012,
+        "free_cash_flow": 135.28305024,
+        "discount_factor": 0.9132420091324202,
+        "pv_fcf": 123.54616460273972
+      },
+      {
+        "year": "FY2028",
+        "growth": 0.11,
+        "revenue": 2540.6035200000006,
+        "ebitda_margin": 0.134,
+        "ebitda": 340.4408716800001,
+        "depreciation": 101.62414080000002,
+        "ebit": 238.81673088000008,
+        "nopat": 178.63491469824007,
+        "capex": 114.32715840000002,
+        "change_nwc": 7.553145600000007,
+        "free_cash_flow": 158.37875149824004,
+        "discount_factor": 0.8340109672442193,
+        "pv_fcf": 132.089615727979
+      },
+      {
+        "year": "FY2029",
+        "growth": 0.1,
+        "revenue": 2794.663872000001,
+        "ebitda_margin": 0.138,
+        "ebitda": 385.6636143360002,
+        "depreciation": 111.78655488000004,
+        "ebit": 273.87705945600015,
+        "nopat": 204.8600404730881,
+        "capex": 125.75987424000004,
+        "change_nwc": 7.621810560000013,
+        "free_cash_flow": 183.26491055308813,
+        "discount_factor": 0.7616538513645839,
+        "pv_fcf": 139.58442494274553
+      },
+      {
+        "year": "FY2030",
+        "growth": 0.09,
+        "revenue": 3046.183620480001,
+        "ebitda_margin": 0.142,
+        "ebitda": 432.5580741081601,
+        "depreciation": 121.84734481920005,
+        "ebit": 310.71072928896007,
+        "nopat": 232.41162550814212,
+        "capex": 137.07826292160004,
+        "change_nwc": 7.545592454400002,
+        "free_cash_flow": 209.63511495134213,
+        "discount_factor": 0.6955742934836383,
+        "pv_fcf": 145.8167969716411
+      },
+      {
+        "year": "FY2031",
+        "growth": 0.08,
+        "revenue": 3289.8783101184013,
+        "ebitda_margin": 0.145,
+        "ebitda": 477.03235496716815,
+        "depreciation": 131.59513240473606,
+        "ebit": 345.4372225624321,
+        "nopat": 258.3870424766992,
+        "capex": 148.04452395532806,
+        "change_nwc": 7.3108406891520055,
+        "free_cash_flow": 234.62681023695524,
+        "discount_factor": 0.6352276652818615,
+        "pv_fcf": 149.04144087935143
+      }
+    ],
+    "wacc": 0.095,
+    "terminal_growth": 0.05,
+    "terminal_value": 5474.625572195623,
+    "pv_terminal": 3477.6336205182006,
+    "pv_forecast": 690.0784431244567,
+    "enterprise_value": 4167.712063642657,
+    "equity_value": 4272.712063642657,
+    "value_per_share": 139.17628871800187
+  },
+  "comps": {
+    "median_multiple": 25.5,
+    "enterprise_value": 6571.349999999999,
+    "equity_value": 6676.349999999999,
+    "value_per_share": 217.47068403908793
+  },
+  "deal": {
+    "offer_price": 274.512,
+    "equity_purchase_price": 8427.518399999999,
+    "transaction_enterprise_value": 8322.518399999999,
+    "cash_funding": 4213.7591999999995,
+    "debt_funding": 4213.7591999999995,
+    "after_tax_interest": 252.151350528,
+    "standalone_eps": 15.640481245576787,
+    "scenarios": [
+      {
+        "name": "Low",
+        "synergy_pct_revenue": 0.02,
+        "pretax_synergy": 40.872,
+        "after_tax_synergy": 30.572256,
+        "combined_pat": 1466.320905472,
+        "combined_eps": 14.82479936782934,
+        "accretion_dilution": -0.05215196802068511
+      },
+      {
+        "name": "Base",
+        "synergy_pct_revenue": 0.03,
+        "pretax_synergy": 61.30799999999999,
+        "after_tax_synergy": 45.858383999999994,
+        "combined_pat": 1481.607033472,
+        "combined_eps": 14.979345197371348,
+        "accretion_dilution": -0.0422708251635423
+      },
+      {
+        "name": "High",
+        "synergy_pct_revenue": 0.04,
+        "pretax_synergy": 81.744,
+        "after_tax_synergy": 61.144512,
+        "combined_pat": 1496.8931614720002,
+        "combined_eps": 15.133891026913359,
+        "accretion_dilution": -0.03238968230639927
+      }
+    ],
+    "break_even_pretax_synergy": 148.73175204278073,
+    "break_even_pct_revenue": 0.07277928755274062
+  },
+  "sensitivity": {
+    "terminal_growth_rates": [
+      0.04,
+      0.045,
+      0.05,
+      0.055,
+      0.06
+    ],
+    "rows": [
+      {
+        "wacc": 0.085,
+        "values": [
+          144.0131781022631,
+          159.33173335622652,
+          179.02701868275096,
+          205.2873991181168,
+          242.05193172762904
+        ]
+      },
+      {
+        "wacc": 0.09,
+        "values": [
+          129.53592849695326,
+          141.5674556459702,
+          156.60686458224137,
+          175.94324750030427,
+          201.72509139105483
+        ]
+      },
+      {
+        "wacc": 0.095,
+        "values": [
+          117.69760905322512,
+          127.36301490237462,
+          139.17628871800187,
+          153.94288098753583,
+          172.92849961979385
+        ]
+      },
+      {
+        "wacc": 0.1,
+        "values": [
+          107.83834435368429,
+          115.74739915485037,
+          125.2382649162497,
+          136.83821195795994,
+          151.3381457600978
+        ]
+      },
+      {
+        "wacc": 0.105,
+        "values": [
+          99.50130131179552,
+          106.07327091620964,
+          113.84014408506268,
+          123.1603918876863,
+          134.55180586867078
+        ]
+      }
+    ]
+  },
+  "recommendation": "Do not proceed at the modeled 20% premium under the assumed funding mix. Reconsider at a lower price or after validating recurring synergies above breakeven."
+}
