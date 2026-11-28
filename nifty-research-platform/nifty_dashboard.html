@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Nifty Options Research Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.min.js"></script>
     <style>
@@ -970,26 +973,26 @@
     <script>
         // ============ EMBEDDED DATA ============
         const dailyData = [
-            {Date:"2026-05-25",Spot:24031.7,PCR_Near:1.299,PCR_All:1.259,MaxPain_Near:24000,Support_Strike:24000,Resistance_Strike:25000,VIX:16.7,Expiry_Nearest:"2026-05-26",Days_To_Expiry:1,Net_OI_Chg_Near:40280955,NextDay_Move_:%:-0.491},
-            {Date:"2026-05-26",Spot:23913.7,PCR_Near:0.902,PCR_All:0.977,MaxPain_Near:23900,Support_Strike:23900,Resistance_Strike:23950,VIX:16.13,Expiry_Nearest:"2026-05-26",Days_To_Expiry:0,Net_OI_Chg_Near:-61125610,NextDay_Move_:%:-0.027},
-            {Date:"2026-05-27",Spot:23907.15,PCR_Near:0.857,PCR_All:1.018,MaxPain_Near:23950,Support_Strike:23000,Resistance_Strike:25000,VIX:14.98,Expiry_Nearest:"2026-06-02",Days_To_Expiry:6,Net_OI_Chg_Near:-11088350,NextDay_Move_:%:-1.503},
-            {Date:"2026-05-29",Spot:23547.75,PCR_Near:0.527,PCR_All:0.744,MaxPain_Near:23800,Support_Strike:23000,Resistance_Strike:24000,VIX:16.19,Expiry_Nearest:"2026-06-02",Days_To_Expiry:4,Net_OI_Chg_Near:-76631165,NextDay_Move_:%:-0.701},
-            {Date:"2026-06-01",Spot:23382.6,PCR_Near:0.491,PCR_All:0.693,MaxPain_Near:23500,Support_Strike:23000,Resistance_Strike:24000,VIX:16.54,Expiry_Nearest:"2026-06-02",Days_To_Expiry:1,Net_OI_Chg_Near:-18639465,NextDay_Move_:%:0.432},
-            {Date:"2026-06-02",Spot:23483.55,PCR_Near:1.072,PCR_All:1.054,MaxPain_Near:23500,Support_Strike:23450,Resistance_Strike:23500,VIX:15.36,Expiry_Nearest:"2026-06-02",Days_To_Expiry:0,Net_OI_Chg_Near:124804095,NextDay_Move_:%:-0.332},
-            {Date:"2026-06-03",Spot:23405.6,PCR_Near:0.983,PCR_All:1.016,MaxPain_Near:23500,Support_Strike:22000,Resistance_Strike:24000,VIX:16.28,Expiry_Nearest:"2026-06-09",Days_To_Expiry:6,Net_OI_Chg_Near:1604850,NextDay_Move_:%:0.047},
-            {Date:"2026-06-04",Spot:23416.55,PCR_Near:0.964,PCR_All:1.003,MaxPain_Near:23450,Support_Strike:22500,Resistance_Strike:24000,VIX:15.89,Expiry_Nearest:"2026-06-09",Days_To_Expiry:5,Net_OI_Chg_Near:-3070405,NextDay_Move_:%:-0.213},
-            {Date:"2026-06-05",Spot:23366.7,PCR_Near:0.699,PCR_All:0.827,MaxPain_Near:23450,Support_Strike:22500,Resistance_Strike:24000,VIX:15.79,Expiry_Nearest:"2026-06-09",Days_To_Expiry:4,Net_OI_Chg_Near:-52448890,NextDay_Move_:%:-1.043},
-            {Date:"2026-06-08",Spot:23123.0,PCR_Near:0.639,PCR_All:0.776,MaxPain_Near:23200,Support_Strike:22500,Resistance_Strike:24000,VIX:17.03,Expiry_Nearest:"2026-06-09",Days_To_Expiry:1,Net_OI_Chg_Near:-17130945,NextDay_Move_:%:0.515},
-            {Date:"2026-06-09",Spot:23242.1,PCR_Near:0.829,PCR_All:0.93,MaxPain_Near:23250,Support_Strike:23200,Resistance_Strike:23250,VIX:15.58,Expiry_Nearest:"2026-06-09",Days_To_Expiry:0,Net_OI_Chg_Near:38553190,NextDay_Move_:%:-0.117},
-            {Date:"2026-06-10",Spot:23214.95,PCR_Near:0.819,PCR_All:0.934,MaxPain_Near:23300,Support_Strike:21200,Resistance_Strike:24000,VIX:15.63,Expiry_Nearest:"2026-06-16",Days_To_Expiry:6,Net_OI_Chg_Near:-24985220,NextDay_Move_:%:-0.23},
-            {Date:"2026-06-11",Spot:23161.6,PCR_Near:0.919,PCR_All:0.985,MaxPain_Near:23200,Support_Strike:21200,Resistance_Strike:24000,VIX:15.61,Expiry_Nearest:"2026-06-16",Days_To_Expiry:5,Net_OI_Chg_Near:10276240,NextDay_Move_:%:1.992},
-            {Date:"2026-06-12",Spot:23622.9,PCR_Near:1.74,PCR_All:1.412,MaxPain_Near:23500,Support_Strike:22500,Resistance_Strike:24000,VIX:14.72,Expiry_Nearest:"2026-06-16",Days_To_Expiry:4,Net_OI_Chg_Near:95103060,NextDay_Move_:%:0.978},
-            {Date:"2026-06-15",Spot:23853.9,PCR_Near:0.946,PCR_All:0.988,MaxPain_Near:23800,Support_Strike:23500,Resistance_Strike:24000,VIX:14.35,Expiry_Nearest:"2026-06-16",Days_To_Expiry:1,Net_OI_Chg_Near:-94162120,NextDay_Move_:%:0.567},
-            {Date:"2026-06-16",Spot:23989.15,PCR_Near:1.137,PCR_All:1.112,MaxPain_Near:23950,Support_Strike:23950,Resistance_Strike:24000,VIX:13.36,Expiry_Nearest:"2026-06-16",Days_To_Expiry:0,Net_OI_Chg_Near:35320415,NextDay_Move_:%:0.402},
-            {Date:"2026-06-17",Spot:24085.7,PCR_Near:1.072,PCR_All:1.1,MaxPain_Near:24000,Support_Strike:24000,Resistance_Strike:25000,VIX:13.19,Expiry_Nearest:"2026-06-23",Days_To_Expiry:6,Net_OI_Chg_Near:5105620,NextDay_Move_:%:0.342},
-            {Date:"2026-06-18",Spot:24168.0,PCR_Near:1.115,PCR_All:1.123,MaxPain_Near:24100,Support_Strike:24000,Resistance_Strike:24500,VIX:12.67,Expiry_Nearest:"2026-06-23",Days_To_Expiry:5,Net_OI_Chg_Near:6511245,NextDay_Move_:%:-0.641},
-            {Date:"2026-06-19",Spot:24013.1,PCR_Near:0.776,PCR_All:0.91,MaxPain_Near:24000,Support_Strike:23500,Resistance_Strike:25000,VIX:12.97,Expiry_Nearest:"2026-06-23",Days_To_Expiry:4,Net_OI_Chg_Near:-48278100,NextDay_Move_:%:0.374},
-            {Date:"2026-06-22",Spot:24102.9,PCR_Near:0.902,PCR_All:1.015,MaxPain_Near:24100,Support_Strike:24000,Resistance_Strike:24500,VIX:12.84,Expiry_Nearest:"2026-06-23",Days_To_Expiry:1,Net_OI_Chg_Near:-32156780,NextDay_Move_:%:-0.209}
+            {Date:"2026-05-25",Spot:24031.7,PCR_Near:1.299,PCR_All:1.259,MaxPain_Near:24000,Support_Strike:24000,Resistance_Strike:25000,VIX:16.7,Expiry_Nearest:"2026-05-26",Days_To_Expiry:1,Net_OI_Chg_Near:40280955,NextDay_Move_pct:-0.491},
+            {Date:"2026-05-26",Spot:23913.7,PCR_Near:0.902,PCR_All:0.977,MaxPain_Near:23900,Support_Strike:23900,Resistance_Strike:23950,VIX:16.13,Expiry_Nearest:"2026-05-26",Days_To_Expiry:0,Net_OI_Chg_Near:-61125610,NextDay_Move_pct:-0.027},
+            {Date:"2026-05-27",Spot:23907.15,PCR_Near:0.857,PCR_All:1.018,MaxPain_Near:23950,Support_Strike:23000,Resistance_Strike:25000,VIX:14.98,Expiry_Nearest:"2026-06-02",Days_To_Expiry:6,Net_OI_Chg_Near:-11088350,NextDay_Move_pct:-1.503},
+            {Date:"2026-05-29",Spot:23547.75,PCR_Near:0.527,PCR_All:0.744,MaxPain_Near:23800,Support_Strike:23000,Resistance_Strike:24000,VIX:16.19,Expiry_Nearest:"2026-06-02",Days_To_Expiry:4,Net_OI_Chg_Near:-76631165,NextDay_Move_pct:-0.701},
+            {Date:"2026-06-01",Spot:23382.6,PCR_Near:0.491,PCR_All:0.693,MaxPain_Near:23500,Support_Strike:23000,Resistance_Strike:24000,VIX:16.54,Expiry_Nearest:"2026-06-02",Days_To_Expiry:1,Net_OI_Chg_Near:-18639465,NextDay_Move_pct:0.432},
+            {Date:"2026-06-02",Spot:23483.55,PCR_Near:1.072,PCR_All:1.054,MaxPain_Near:23500,Support_Strike:23450,Resistance_Strike:23500,VIX:15.36,Expiry_Nearest:"2026-06-02",Days_To_Expiry:0,Net_OI_Chg_Near:124804095,NextDay_Move_pct:-0.332},
+            {Date:"2026-06-03",Spot:23405.6,PCR_Near:0.983,PCR_All:1.016,MaxPain_Near:23500,Support_Strike:22000,Resistance_Strike:24000,VIX:16.28,Expiry_Nearest:"2026-06-09",Days_To_Expiry:6,Net_OI_Chg_Near:1604850,NextDay_Move_pct:0.047},
+            {Date:"2026-06-04",Spot:23416.55,PCR_Near:0.964,PCR_All:1.003,MaxPain_Near:23450,Support_Strike:22500,Resistance_Strike:24000,VIX:15.89,Expiry_Nearest:"2026-06-09",Days_To_Expiry:5,Net_OI_Chg_Near:-3070405,NextDay_Move_pct:-0.213},
+            {Date:"2026-06-05",Spot:23366.7,PCR_Near:0.699,PCR_All:0.827,MaxPain_Near:23450,Support_Strike:22500,Resistance_Strike:24000,VIX:15.79,Expiry_Nearest:"2026-06-09",Days_To_Expiry:4,Net_OI_Chg_Near:-52448890,NextDay_Move_pct:-1.043},
+            {Date:"2026-06-08",Spot:23123.0,PCR_Near:0.639,PCR_All:0.776,MaxPain_Near:23200,Support_Strike:22500,Resistance_Strike:24000,VIX:17.03,Expiry_Nearest:"2026-06-09",Days_To_Expiry:1,Net_OI_Chg_Near:-17130945,NextDay_Move_pct:0.515},
+            {Date:"2026-06-09",Spot:23242.1,PCR_Near:0.829,PCR_All:0.93,MaxPain_Near:23250,Support_Strike:23200,Resistance_Strike:23250,VIX:15.58,Expiry_Nearest:"2026-06-09",Days_To_Expiry:0,Net_OI_Chg_Near:38553190,NextDay_Move_pct:-0.117},
+            {Date:"2026-06-10",Spot:23214.95,PCR_Near:0.819,PCR_All:0.934,MaxPain_Near:23300,Support_Strike:21200,Resistance_Strike:24000,VIX:15.63,Expiry_Nearest:"2026-06-16",Days_To_Expiry:6,Net_OI_Chg_Near:-24985220,NextDay_Move_pct:-0.23},
+            {Date:"2026-06-11",Spot:23161.6,PCR_Near:0.919,PCR_All:0.985,MaxPain_Near:23200,Support_Strike:21200,Resistance_Strike:24000,VIX:15.61,Expiry_Nearest:"2026-06-16",Days_To_Expiry:5,Net_OI_Chg_Near:10276240,NextDay_Move_pct:1.992},
+            {Date:"2026-06-12",Spot:23622.9,PCR_Near:1.74,PCR_All:1.412,MaxPain_Near:23500,Support_Strike:22500,Resistance_Strike:24000,VIX:14.72,Expiry_Nearest:"2026-06-16",Days_To_Expiry:4,Net_OI_Chg_Near:95103060,NextDay_Move_pct:0.978},
+            {Date:"2026-06-15",Spot:23853.9,PCR_Near:0.946,PCR_All:0.988,MaxPain_Near:23800,Support_Strike:23500,Resistance_Strike:24000,VIX:14.35,Expiry_Nearest:"2026-06-16",Days_To_Expiry:1,Net_OI_Chg_Near:-94162120,NextDay_Move_pct:0.567},
+            {Date:"2026-06-16",Spot:23989.15,PCR_Near:1.137,PCR_All:1.112,MaxPain_Near:23950,Support_Strike:23950,Resistance_Strike:24000,VIX:13.36,Expiry_Nearest:"2026-06-16",Days_To_Expiry:0,Net_OI_Chg_Near:35320415,NextDay_Move_pct:0.402},
+            {Date:"2026-06-17",Spot:24085.7,PCR_Near:1.072,PCR_All:1.1,MaxPain_Near:24000,Support_Strike:24000,Resistance_Strike:25000,VIX:13.19,Expiry_Nearest:"2026-06-23",Days_To_Expiry:6,Net_OI_Chg_Near:5105620,NextDay_Move_pct:0.342},
+            {Date:"2026-06-18",Spot:24168.0,PCR_Near:1.115,PCR_All:1.123,MaxPain_Near:24100,Support_Strike:24000,Resistance_Strike:24500,VIX:12.67,Expiry_Nearest:"2026-06-23",Days_To_Expiry:5,Net_OI_Chg_Near:6511245,NextDay_Move_pct:-0.641},
+            {Date:"2026-06-19",Spot:24013.1,PCR_Near:0.776,PCR_All:0.91,MaxPain_Near:24000,Support_Strike:23500,Resistance_Strike:25000,VIX:12.97,Expiry_Nearest:"2026-06-23",Days_To_Expiry:4,Net_OI_Chg_Near:-48278100,NextDay_Move_pct:0.374},
+            {Date:"2026-06-22",Spot:24102.9,PCR_Near:0.902,PCR_All:1.015,MaxPain_Near:24100,Support_Strike:24000,Resistance_Strike:24500,VIX:12.84,Expiry_Nearest:"2026-06-23",Days_To_Expiry:1,Net_OI_Chg_Near:-32156780,NextDay_Move_pct:-0.209}
         ];
 
         const strikeData = [
@@ -1201,8 +1204,8 @@
             const prevLast = dailyData.length > 1 ? dailyData[dailyData.length - 2] : last;
 
             document.getElementById('niftyPrice').textContent = formatNumber(last.Spot);
-            document.getElementById('niftyDelta').textContent = `${last.NextDay_Move_:% >= 0 ? '↑' : '↓'} ${formatNumber(Math.abs(last.NextDay_Move_:%), 2)}%`;
-            document.getElementById('niftyDelta').className = `kpi-delta ${last.NextDay_Move_:% >= 0 ? 'up' : 'down'}`;
+            document.getElementById('niftyDelta').textContent = `${last.NextDay_Move_pct >= 0 ? '↑' : '↓'} ${formatNumber(Math.abs(last.NextDay_Move_pct), 2)}%`;
+            document.getElementById('niftyDelta').className = `kpi-delta ${last.NextDay_Move_pct >= 0 ? 'up' : 'down'}`;
 
             document.getElementById('sensexPrice').textContent = formatNumber(liveData.sensex.price);
             document.getElementById('sensexDelta').textContent = `${liveData.sensex.delta >= 0 ? '↑' : '↓'} ${formatNumber(Math.abs(liveData.sensex.delta), 2)}%`;
@@ -1234,8 +1237,8 @@
                 const nextDay = dailyData[dailyData.indexOf(day) + 1];
                 if (!nextDay) return;
                 
-                const actual = nextDay.NextDay_Move_:% >= 0 ? 'UP' : 'DOWN';
-                const lean = day.NextDay_Move_:% >= 0 ? 'UP' : 'DOWN';
+                const actual = nextDay.NextDay_Move_pct >= 0 ? 'UP' : 'DOWN';
+                const lean = day.NextDay_Move_pct >= 0 ? 'UP' : 'DOWN';
                 const correct = actual === lean ? '✓' : '✗';
                 
                 const row = document.createElement('tr');
