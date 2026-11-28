@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Nifty Options Research Dashboard</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -1009,6 +1009,9 @@
             sensex: { price: 73400, delta: -0.5 },
             bankNifty: { price: 51200, delta: -0.3 },
             vix: { price: 12.97, delta: -0.05 },
+            vixRange: null,
+            trendLean: null,
+            updatedAt: null,
             news: []
         };
 
@@ -1026,7 +1029,7 @@
                 '"': '&quot;',
                 "'": '&#039;'
             };
-            return text.replace(/[&<>"']/g, m => map[m]);
+            return String(text ?? '').replace(/[&<>"']/g, m => map[m]);
         }
 
         function formatNumber(num, decimals = 2) {
@@ -1055,6 +1058,28 @@
 
         function getLastDaysData(n = 20) {
             return dailyData.slice(-n);
+        }
+
+        function createChart(canvasId, config) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return null;
+
+            const container = canvas.parentElement;
+            const oldMessage = container.querySelector('.chart-error');
+            if (oldMessage) oldMessage.remove();
+
+            if (typeof window.Chart === 'undefined') {
+                canvas.hidden = true;
+                const message = document.createElement('p');
+                message.className = 'chart-error';
+                message.textContent = 'Chart could not load. The numbers and tables still work; refresh when your connection is available.';
+                message.style.cssText = 'color:var(--muted);font-size:12px;padding:16px 0;text-align:center';
+                container.appendChild(message);
+                return null;
+            }
+
+            canvas.hidden = false;
+            return new Chart(canvas, config);
         }
 
         function calculateTrendLean() {
@@ -1174,61 +1199,90 @@
         }
 
         // ============ TAB SWITCHING ============
+        const tabRenderers = {
+            live: renderLiveTab,
+            tomorrow: renderTomorrowTab,
+            day: renderDayTab,
+            trends: renderTrendsTab,
+            signals: renderSignalsTab,
+            indicators: renderIndicatorsTab,
+            check: renderCheckTab,
+            news: renderNewsTab,
+            learn: () => {}
+        };
+
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                
-                e.target.classList.add('active');
-                const tabName = e.target.dataset.tab;
-                document.getElementById(`tab-${tabName}`).classList.add('active');
+
+                e.currentTarget.classList.add('active');
+                const tabName = e.currentTarget.dataset.tab;
+                const panel = document.getElementById(`tab-${tabName}`);
+                panel.classList.add('active');
                 currentTab = tabName;
-                
-                // Scroll tab into view
+
                 setTimeout(() => {
                     const tabs = document.getElementById('tabs');
                     const activeTab = document.querySelector('.tab.active');
                     tabs.scrollLeft = activeTab.offsetLeft - 50;
                 }, 0);
-                
-                // Render specific tabs
-                if (tabName === 'day') renderDayTab();
-                if (tabName === 'signals') renderSignalsTab();
-                if (tabName === 'indicators') renderIndicatorsTab();
+
+                requestAnimationFrame(() => {
+                    try {
+                        tabRenderers[tabName]();
+                    } catch (error) {
+                        console.error(`Could not render ${tabName} tab:`, error);
+                        const existing = panel.querySelector('.tab-error');
+                        if (!existing) {
+                            const message = document.createElement('div');
+                            message.className = 'error tab-error';
+                            message.textContent = 'This section could not finish loading. Refresh the page and try again.';
+                            panel.prepend(message);
+                        }
+                    }
+                });
             });
         });
 
         // ============ RENDER LIVE TAB ============
         function renderLiveTab() {
             const last = dailyData[dailyData.length - 1];
-            const prevLast = dailyData.length > 1 ? dailyData[dailyData.length - 2] : last;
+            const nifty = liveData.nifty || { price: last.Spot, delta: last.NextDay_Move_pct };
+            const sensex = liveData.sensex;
+            const bankNifty = liveData.bankNifty;
+            const vix = liveData.vix || { price: last.VIX, delta: 0 };
 
-            document.getElementById('niftyPrice').textContent = formatNumber(last.Spot);
-            document.getElementById('niftyDelta').textContent = `${last.NextDay_Move_pct >= 0 ? '↑' : '↓'} ${formatNumber(Math.abs(last.NextDay_Move_pct), 2)}%`;
-            document.getElementById('niftyDelta').className = `kpi-delta ${last.NextDay_Move_pct >= 0 ? 'up' : 'down'}`;
+            document.getElementById('niftyPrice').textContent = formatNumber(nifty.price);
+            document.getElementById('niftyDelta').textContent = `${nifty.delta >= 0 ? '↑' : '↓'} ${formatNumber(Math.abs(nifty.delta), 2)}%`;
+            document.getElementById('niftyDelta').className = `kpi-delta ${nifty.delta >= 0 ? 'up' : 'down'}`;
 
-            document.getElementById('sensexPrice').textContent = formatNumber(liveData.sensex.price);
-            document.getElementById('sensexDelta').textContent = `${liveData.sensex.delta >= 0 ? '↑' : '↓'} ${formatNumber(Math.abs(liveData.sensex.delta), 2)}%`;
-            document.getElementById('sensexDelta').className = `kpi-delta ${liveData.sensex.delta >= 0 ? 'up' : 'down'}`;
+            document.getElementById('sensexPrice').textContent = formatNumber(sensex.price);
+            document.getElementById('sensexDelta').textContent = `${sensex.delta >= 0 ? '↑' : '↓'} ${formatNumber(Math.abs(sensex.delta), 2)}%`;
+            document.getElementById('sensexDelta').className = `kpi-delta ${sensex.delta >= 0 ? 'up' : 'down'}`;
 
-            document.getElementById('bankNiftyPrice').textContent = formatNumber(liveData.bankNifty.price);
-            document.getElementById('bankNiftyDelta').textContent = `${liveData.bankNifty.delta >= 0 ? '↑' : '↓'} ${formatNumber(Math.abs(liveData.bankNifty.delta), 2)}%`;
-            document.getElementById('bankNiftyDelta').className = `kpi-delta ${liveData.bankNifty.delta >= 0 ? 'up' : 'down'}`;
+            document.getElementById('bankNiftyPrice').textContent = formatNumber(bankNifty.price);
+            document.getElementById('bankNiftyDelta').textContent = `${bankNifty.delta >= 0 ? '↑' : '↓'} ${formatNumber(Math.abs(bankNifty.delta), 2)}%`;
+            document.getElementById('bankNiftyDelta').className = `kpi-delta ${bankNifty.delta >= 0 ? 'up' : 'down'}`;
 
-            document.getElementById('vixPrice').textContent = formatNumber(last.VIX, 2);
-            document.getElementById('vixDelta').textContent = `Change: ${formatNumber(last.VIX - prevLast.VIX, 2)}`;
+            document.getElementById('vixPrice').textContent = formatNumber(vix.price, 2);
+            document.getElementById('vixDelta').textContent = `Change: ${formatNumber(vix.delta, 2)}`;
 
-            const range1Sigma = last.Spot * (last.VIX / 100);
-            const range2Sigma = last.Spot * (last.VIX / 100) * 2;
+            const range1Sigma = nifty.price * (vix.price / 100) / Math.sqrt(252);
+            const range2Sigma = range1Sigma * 2;
             document.getElementById('vixRange1').textContent = `±${formatNumber(range1Sigma, 0)}`;
             document.getElementById('vixRange2').textContent = `±${formatNumber(range2Sigma, 0)}`;
 
-            // Trend lean
-            const trendLean = calculateTrendLean();
+            const fallbackLean = calculateTrendLean();
+            const liveLean = liveData.trendLean;
+            const lean = liveLean?.lean || fallbackLean.lean;
+            const reasons = Array.isArray(liveLean?.reasons)
+                ? liveLean.reasons.join(' · ')
+                : fallbackLean.reason;
             const leanEl = document.getElementById('trendLean');
-            leanEl.textContent = trendLean.lean.toUpperCase();
-            leanEl.className = `lean ${trendLean.lean}`;
-            document.getElementById('trendReasons').textContent = trendLean.reason;
+            leanEl.textContent = lean.toUpperCase();
+            leanEl.className = `lean ${lean}`;
+            document.getElementById('trendReasons').textContent = reasons;
 
             // Track record
             const trackRecord = document.getElementById('trackRecord');
@@ -1268,7 +1322,7 @@
 
             if (charts.mini) charts.mini.destroy();
             
-            charts.mini = new Chart(ctx, {
+            charts.mini = createChart('miniChart', {
                 type: 'line',
                 data: {
                     labels,
@@ -1312,38 +1366,29 @@
         // ============ RENDER DAY TAB ============
         function renderDayTab() {
             const datePicker = document.getElementById('dayPicker');
-            const last = dailyData[dailyData.length - 1];
-            datePicker.value = last.Date;
+            const latestDate = dailyData[dailyData.length - 1].Date;
+            datePicker.min = dailyData[0].Date;
+            datePicker.max = latestDate;
+            if (!datePicker.value) datePicker.value = latestDate;
+            datePicker.onchange = (event) => renderSelectedDay(event.target.value);
+            renderSelectedDay(datePicker.value);
+        }
 
-            datePicker.addEventListener('change', (e) => {
-                const selectedDate = e.target.value;
-                const dayData = dailyData.find(d => d.Date === selectedDate);
-                if (!dayData) return;
+        function renderSelectedDay(selectedDate) {
+            const dayData = dailyData.find(d => d.Date === selectedDate);
+            const expiryInfo = document.getElementById('expiryInfo');
+            const canvas = document.getElementById('oiChart');
 
-                document.getElementById('daySpot').textContent = formatNumber(dayData.Spot);
-                document.getElementById('dayPCR').textContent = formatNumber(dayData.PCR_Near, 3);
-                document.getElementById('dayVIX').textContent = formatNumber(dayData.VIX, 2);
-                document.getElementById('dayMaxPain').textContent = formatNumber(dayData.MaxPain_Near);
-                document.getElementById('daySupport').textContent = formatNumber(dayData.Support_Strike);
-                document.getElementById('dayResistance').textContent = formatNumber(dayData.Resistance_Strike);
-
-                // Expiry flag
-                const expiryInfo = document.getElementById('expiryInfo');
-                if (dayData.Days_To_Expiry === 0) {
-                    expiryInfo.innerHTML = `<strong style="color:var(--down);">⚠ Expiry day today</strong>. PCR can be distorted. OI may be unstable.`;
-                } else {
-                    expiryInfo.textContent = `${dayData.Days_To_Expiry} days to expiry (${dayData.Expiry_Nearest})`;
+            if (!dayData) {
+                expiryInfo.textContent = 'No embedded trading-day data is available for this date.';
+                if (charts.oi) {
+                    charts.oi.destroy();
+                    charts.oi = null;
                 }
+                canvas.hidden = true;
+                return;
+            }
 
-                // OI Chart
-                const dayStrikes = strikeData.filter(s => s.Date === selectedDate);
-                if (dayStrikes.length > 0) {
-                    renderOIChart(dayStrikes);
-                }
-            });
-
-            // Initial render
-            const dayData = dailyData[dailyData.length - 1];
             document.getElementById('daySpot').textContent = formatNumber(dayData.Spot);
             document.getElementById('dayPCR').textContent = formatNumber(dayData.PCR_Near, 3);
             document.getElementById('dayVIX').textContent = formatNumber(dayData.VIX, 2);
@@ -1351,10 +1396,33 @@
             document.getElementById('daySupport').textContent = formatNumber(dayData.Support_Strike);
             document.getElementById('dayResistance').textContent = formatNumber(dayData.Resistance_Strike);
 
-            const dayStrikes = strikeData.filter(s => s.Date === dayData.Date);
-            if (dayStrikes.length > 0) {
-                renderOIChart(dayStrikes);
+            if (dayData.Days_To_Expiry === 0) {
+                expiryInfo.innerHTML = '<strong style="color:var(--down);">⚠ Expiry day</strong>. PCR can be distorted and OI may be unstable.';
+            } else {
+                expiryInfo.textContent = `${dayData.Days_To_Expiry} days to expiry (${dayData.Expiry_Nearest})`;
             }
+
+            const dayStrikes = strikeData.filter(s => s.Date === selectedDate);
+            const container = canvas.parentElement;
+            const oldMessage = container.querySelector('.chart-error');
+            if (oldMessage) oldMessage.remove();
+
+            if (dayStrikes.length === 0) {
+                if (charts.oi) {
+                    charts.oi.destroy();
+                    charts.oi = null;
+                }
+                canvas.hidden = true;
+                const message = document.createElement('p');
+                message.className = 'chart-error';
+                message.textContent = 'No strike OI rows are embedded for this date. Choose 19 Jun 2026 to view the sample strike chart.';
+                message.style.cssText = 'color:var(--muted);font-size:12px;padding:16px 0;text-align:center';
+                container.appendChild(message);
+                return;
+            }
+
+            canvas.hidden = false;
+            renderOIChart(dayStrikes);
         }
 
         function renderOIChart(dayStrikes) {
@@ -1367,7 +1435,7 @@
 
             if (charts.oi) charts.oi.destroy();
 
-            charts.oi = new Chart(ctx, {
+            charts.oi = createChart('oiChart', {
                 type: 'bar',
                 data: {
                     labels: strikes.map(s => s.toFixed(0)),
@@ -1405,25 +1473,25 @@
         // ============ RENDER TOMORROW TAB ============
         function renderTomorrowTab() {
             const last = dailyData[dailyData.length - 1];
-            const range1 = last.Spot * (last.VIX / 100);
-            const range2 = last.Spot * (last.VIX / 100) * 2;
+            const spot = liveData.nifty?.price || last.Spot;
+            const vix = liveData.vix?.price || last.VIX;
+            const range1 = spot * (vix / 100) / Math.sqrt(252);
+            const range2 = range1 * 2;
 
-            document.getElementById('tm1SigmaLow').textContent = formatNumber(last.Spot - range1);
-            document.getElementById('tm1SigmaHigh').textContent = `to ${formatNumber(last.Spot + range1)}`;
-            document.getElementById('tm2SigmaLow').textContent = formatNumber(last.Spot - range2);
-            document.getElementById('tm2SigmaHigh').textContent = `to ${formatNumber(last.Spot + range2)}`;
+            document.getElementById('tm1SigmaLow').textContent = formatNumber(spot - range1);
+            document.getElementById('tm1SigmaHigh').textContent = `to ${formatNumber(spot + range1)}`;
+            document.getElementById('tm2SigmaLow').textContent = formatNumber(spot - range2);
+            document.getElementById('tm2SigmaHigh').textContent = `to ${formatNumber(spot + range2)}`;
 
-            // Range bar chart
-            renderRangeBarChart(last, range1, range2);
+            renderRangeBarChart({ Spot: spot }, range1, range2);
 
-            // Tomorrow's lean
-            const trendLean = calculateTrendLean();
+            const fallbackLean = calculateTrendLean();
+            const lean = liveData.trendLean?.lean || fallbackLean.lean;
             const leanEl = document.getElementById('tomorrowLean');
-            leanEl.textContent = trendLean.lean.toUpperCase();
-            leanEl.className = `lean ${trendLean.lean}`;
+            leanEl.textContent = lean.toUpperCase();
+            leanEl.className = `lean ${lean}`;
 
-            // Similar VIX days
-            renderSimilarVixDays(last.VIX);
+            renderSimilarVixDays(vix);
         }
 
         function renderRangeBarChart(last, range1, range2) {
@@ -1432,7 +1500,7 @@
 
             if (charts.rangeBar) charts.rangeBar.destroy();
 
-            charts.rangeBar = new Chart(ctx, {
+            charts.rangeBar = createChart('rangeBarChart', {
                 type: 'bar',
                 data: {
                     labels: ['VIX Range'],
@@ -1510,7 +1578,7 @@
 
             signals.forEach(signal => {
                 const diff = (signal.probUp - signal.baseline) * 100;
-                const passes = Math.abs(diff) > 3; // Passes if >3% edge
+                const passes = false; // No simplified signal is confirmed without all Check-tab tests.
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -1523,41 +1591,51 @@
             });
         }
 
-        // ============ RENDER INDICATORS TAB ============
-        function renderIndicatorsTab() {
+        // ============ RENDER TRENDS TAB ============
+        function renderTrendsTab() {
             const last = dailyData[dailyData.length - 1];
-
-            document.getElementById('ema20').textContent = formatNumber(calculateEMA(20));
-            document.getElementById('ema50').textContent = formatNumber(calculateEMA(50));
-            document.getElementById('rsi').textContent = formatNumber(calculateRSI());
+            document.getElementById('ema20').textContent = dailyData.length >= 20
+                ? formatNumber(calculateEMA(20))
+                : 'Need 20 days';
+            document.getElementById('ema50').textContent = dailyData.length >= 50
+                ? formatNumber(calculateEMA(50))
+                : 'Need 50 days';
+            document.getElementById('rsi').textContent = dailyData.length >= 15
+                ? formatNumber(calculateRSI())
+                : 'Need 15 days';
 
             const ret5d = (last.Spot / dailyData[Math.max(0, dailyData.length - 5)].Spot - 1) * 100;
             document.getElementById('ret5d').textContent = `${ret5d >= 0 ? '↑' : '↓'} ${formatNumber(Math.abs(ret5d), 2)}%`;
-
             renderTrendsChart();
+        }
+
+        // ============ RENDER INDICATORS TAB ============
+        function renderIndicatorsTab() {
+            const last = dailyData[dailyData.length - 1];
             renderBBChart();
             renderRSIChart();
             renderMACDChart();
 
             const tbody = document.getElementById('indicatorsTable');
             tbody.innerHTML = '';
-
+            const bands = calculateBollingerBands();
             const indicators = [
-                { name: 'Bollinger Upper Touch', signal: calculateBollingerBands().upper > last.Spot, accuracy: 0.48 },
-                { name: 'RSI > 70', signal: calculateRSI() > 70, accuracy: 0.46 },
-                { name: 'MACD Positive', signal: calculateMACD() > 0, accuracy: 0.52 },
-                { name: 'EMA 20 > 50', signal: calculateEMA(20) > calculateEMA(50), accuracy: 0.54 },
-                { name: 'Supertrend Up', signal: calculateSupertrend() === 'up', accuracy: 0.49 }
+                { name: 'Bollinger Upper Touch', signal: bands ? bands.upper > last.Spot : null, accuracy: 0.48 },
+                { name: 'RSI > 70', signal: dailyData.length >= 15 ? calculateRSI() > 70 : null, accuracy: 0.46 },
+                { name: 'MACD Positive', signal: dailyData.length >= 26 ? calculateMACD() > 0 : null, accuracy: null },
+                { name: 'EMA 20 > 50', signal: dailyData.length >= 50 ? calculateEMA(20) > calculateEMA(50) : null, accuracy: null },
+                { name: 'Supertrend Up', signal: dailyData.length >= 10 ? calculateSupertrend() === 'up' : null, accuracy: 0.49 }
             ];
 
             indicators.forEach(ind => {
-                const passes = ind.accuracy > 0.51; // Passes if >51% accuracy
+                const signalText = ind.signal === null ? 'Not enough data' : ind.signal ? 'Yes' : 'No';
+                const accuracyText = ind.accuracy === null ? '—' : formatPercent(ind.accuracy);
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td><strong>${escapeHtml(ind.name)}</strong></td>
-                    <td>${ind.signal ? 'Yes' : 'No'}</td>
-                    <td>${formatPercent(ind.accuracy)}</td>
-                    <td style="color:${passes ? 'var(--up)' : 'var(--down)'};">${passes ? '✓' : '✗'}</td>
+                    <td>${signalText}</td>
+                    <td>${accuracyText}</td>
+                    <td style="color:var(--down);">✗ Not confirmed</td>
                 `;
                 tbody.appendChild(row);
             });
@@ -1583,7 +1661,7 @@
 
             if (charts.trends) charts.trends.destroy();
 
-            charts.trends = new Chart(ctx, {
+            charts.trends = createChart('trendsChart', {
                 type: 'line',
                 data: {
                     labels,
@@ -1642,7 +1720,7 @@
 
             if (charts.bb) charts.bb.destroy();
 
-            charts.bb = new Chart(ctx, {
+            charts.bb = createChart('bbChart', {
                 type: 'line',
                 data: {
                     labels,
@@ -1718,7 +1796,7 @@
 
             if (charts.rsi) charts.rsi.destroy();
 
-            charts.rsi = new Chart(ctx, {
+            charts.rsi = createChart('rsiChart', {
                 type: 'line',
                 data: {
                     labels,
@@ -1746,6 +1824,25 @@
             const ctx = document.getElementById('macdChart');
             if (!ctx) return;
 
+            const container = ctx.parentElement;
+            const oldMessage = container.querySelector('.chart-error');
+            if (oldMessage) oldMessage.remove();
+
+            if (dailyData.length < 26) {
+                if (charts.macd) {
+                    charts.macd.destroy();
+                    charts.macd = null;
+                }
+                ctx.hidden = true;
+                const message = document.createElement('p');
+                message.className = 'chart-error';
+                message.textContent = `MACD needs at least 26 trading days; ${dailyData.length} are embedded.`;
+                message.style.cssText = 'color:var(--muted);font-size:12px;padding:16px 0;text-align:center';
+                container.appendChild(message);
+                return;
+            }
+
+            ctx.hidden = false;
             const last30 = dailyData.slice(-30);
             const labels = last30.map(d => d.Date);
             const macdValues = last30.map((d, i) => {
@@ -1760,7 +1857,7 @@
 
             if (charts.macd) charts.macd.destroy();
 
-            charts.macd = new Chart(ctx, {
+            charts.macd = createChart('macdChart', {
                 type: 'bar',
                 data: {
                     labels,
@@ -1781,7 +1878,7 @@
         }
 
         // ============ RENDER CHECK TAB ============
-        document.addEventListener('DOMContentLoaded', () => {
+        function renderCheckTab() {
             const tbody = document.getElementById('checkTable');
             if (tbody) {
                 tbody.innerHTML = '';
@@ -1789,7 +1886,7 @@
                 const signals = [
                     { name: 'PCR Signal', pValue: 0.087, passes: false },
                     { name: 'Market Halves', pValue: 0.156, passes: false },
-                    { name: 'Supertrend', pValue: 0.045, passes: true },
+                    { name: 'Supertrend', pValue: 0.045, passes: false },
                     { name: 'VIX Zone', pValue: 0.312, passes: false },
                     { name: 'RSI Extreme', pValue: 0.278, passes: false }
                 ];
@@ -1808,7 +1905,7 @@
 
                 document.getElementById('passingSignals').textContent = signals.filter(s => s.passes).length + ' / ' + signals.length;
             }
-        });
+        }
 
         // ============ RENDER NEWS TAB ============
         function renderNewsTab() {
@@ -1850,38 +1947,33 @@
         // ============ AUTO-FETCH LIVE DATA ============
         async function fetchLiveData() {
             try {
-                const response = await fetch('./data/live.json?t=' + Date.now());
-                if (!response.ok) {
-                    console.error('HTTP error, status:', response.status);
-                    throw new Error('Network response not ok');
-                }
+                const response = await fetch('./data/live.json?t=' + Date.now(), { cache: 'no-store' });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
-                console.log('✓ Live data fetched:', data);
-                
-                if (data.indices && data.indices.nifty50) {
-                    liveData.nifty = { 
-                        price: data.indices.nifty50.price, 
-                        delta: data.indices.nifty50.delta 
+
+                if (data.indices?.nifty50) liveData.nifty = data.indices.nifty50;
+                if (data.indices?.sensex) liveData.sensex = data.indices.sensex;
+                if (data.indices?.banknifty) liveData.bankNifty = data.indices.banknifty;
+                if (data.vix) {
+                    liveData.vix = {
+                        price: Number(data.vix.value),
+                        delta: Number(data.vix.change || 0)
                     };
-                    liveData.sensex = { 
-                        price: data.indices.sensex.price, 
-                        delta: data.indices.sensex.delta 
-                    };
-                    liveData.bankNifty = { 
-                        price: data.indices.banknifty.price, 
-                        delta: data.indices.banknifty.delta 
-                    };
-                    if (currentTab === 'live') renderLiveTab();
                 }
+                liveData.vixRange = data.vix_range || null;
+                liveData.trendLean = data.trend_lean || null;
+                liveData.updatedAt = data.timestamp || data.log?.last_update || null;
+                liveData.news = Array.isArray(data.news) ? data.news : liveData.news;
+
+                tabRenderers[currentTab]();
+                return true;
             } catch (error) {
-                console.error('❌ Could not fetch live.json. Showing embedded data. Error:', error);
+                console.error('Could not fetch live data; keeping the last good values:', error);
+                return false;
             }
         }
 
-        // Fetch on page load
         fetchLiveData();
-        
-        // Fetch every 60 seconds
         setInterval(fetchLiveData, 60000);
         document.getElementById('updateBtn').addEventListener('click', async () => {
             const btn = document.getElementById('updateBtn');
@@ -1889,15 +1981,9 @@
             btn.textContent = '⟳ Fetching...';
             btn.disabled = true;
 
-            try {
-                await fetchLiveData();
-                btn.textContent = '✓ Updated';
-                setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
-            } catch (error) {
-                console.error('Update failed:', error);
-                btn.textContent = '✗ Error';
-                setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
-            }
+            const updated = await fetchLiveData();
+            btn.textContent = updated ? '✓ Updated' : '✗ Kept last data';
+            setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
         });
 
         // ============ RESET ============
@@ -1938,16 +2024,8 @@
         });
 
         // ============ INIT ============
-        console.log('🚀 Dashboard initializing...');
         renderLiveTab();
-        renderTomorrowTab();
-        renderNewsTab();
-        
-        // Fetch on page load
-        fetchLiveData();
-        
-        // Fetch every 60 seconds
-        setInterval(fetchLiveData, 60000);
+        renderCheckTab();
     </script>
 </body>
 </html>
