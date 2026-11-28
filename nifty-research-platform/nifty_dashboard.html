@@ -1851,7 +1851,7 @@
         // ============ AUTO-FETCH LIVE DATA ============
         async function fetchLiveData() {
             try {
-                const response = await fetch('/claude/nifty-research-platform/data/live.json?t=' + Date.now());
+                const response = await fetch('./data/live.json?t=' + Date.now());
                 if (!response.ok) throw new Error('Network response not ok');
                 const data = await response.json();
                 
