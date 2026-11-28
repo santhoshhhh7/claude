@@ -489,7 +489,6 @@
 
     <!-- TAB: LIVE -->
     <div class="tab-content active" id="tab-live">
-        <div id="liveStatus" class="loading">Loading live data...</div>
         <div id="liveContent">
             <div class="kpi-grid">
                 <div class="kpi-card">
@@ -1254,9 +1253,6 @@
 
             // Mini chart
             renderMiniChart();
-
-            document.getElementById('liveStatus').style.display = 'none';
-            document.getElementById('liveContent').style.display = 'block';
         }
 
         function renderMiniChart() {
