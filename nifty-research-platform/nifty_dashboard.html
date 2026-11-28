@@ -1852,8 +1852,12 @@
         async function fetchLiveData() {
             try {
                 const response = await fetch('./data/live.json?t=' + Date.now());
-                if (!response.ok) throw new Error('Network response not ok');
+                if (!response.ok) {
+                    console.error('HTTP error, status:', response.status);
+                    throw new Error('Network response not ok');
+                }
                 const data = await response.json();
+                console.log('✓ Live data fetched:', data);
                 
                 if (data.indices && data.indices.nifty50) {
                     liveData.nifty = { 
@@ -1871,7 +1875,7 @@
                     if (currentTab === 'live') renderLiveTab();
                 }
             } catch (error) {
-                console.warn('Could not fetch live.json:', error);
+                console.error('❌ Could not fetch live.json. Showing embedded data. Error:', error);
             }
         }
 
@@ -1880,8 +1884,6 @@
         
         // Fetch every 60 seconds
         setInterval(fetchLiveData, 60000);
-
-        // ============ UPDATE DATA BUTTON ============
         document.getElementById('updateBtn').addEventListener('click', async () => {
             const btn = document.getElementById('updateBtn');
             const originalText = btn.textContent;
@@ -1937,9 +1939,16 @@
         });
 
         // ============ INIT ============
+        console.log('🚀 Dashboard initializing...');
         renderLiveTab();
         renderTomorrowTab();
         renderNewsTab();
+        
+        // Fetch on page load
+        fetchLiveData();
+        
+        // Fetch every 60 seconds
+        setInterval(fetchLiveData, 60000);
     </script>
 </body>
 </html>
