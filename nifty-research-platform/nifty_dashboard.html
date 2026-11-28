@@ -1848,7 +1848,40 @@
             `).join('');
         }
 
-        // ============ UPDATE DATA ============
+        // ============ AUTO-FETCH LIVE DATA ============
+        async function fetchLiveData() {
+            try {
+                const response = await fetch('/claude/nifty-research-platform/data/live.json?t=' + Date.now());
+                if (!response.ok) throw new Error('Network response not ok');
+                const data = await response.json();
+                
+                if (data.indices && data.indices.nifty50) {
+                    liveData.nifty = { 
+                        price: data.indices.nifty50.price, 
+                        delta: data.indices.nifty50.delta 
+                    };
+                    liveData.sensex = { 
+                        price: data.indices.sensex.price, 
+                        delta: data.indices.sensex.delta 
+                    };
+                    liveData.bankNifty = { 
+                        price: data.indices.banknifty.price, 
+                        delta: data.indices.banknifty.delta 
+                    };
+                    if (currentTab === 'live') renderLiveTab();
+                }
+            } catch (error) {
+                console.warn('Could not fetch live.json:', error);
+            }
+        }
+
+        // Fetch on page load
+        fetchLiveData();
+        
+        // Fetch every 60 seconds
+        setInterval(fetchLiveData, 60000);
+
+        // ============ UPDATE DATA BUTTON ============
         document.getElementById('updateBtn').addEventListener('click', async () => {
             const btn = document.getElementById('updateBtn');
             const originalText = btn.textContent;
@@ -1856,10 +1889,7 @@
             btn.disabled = true;
 
             try {
-                // In production, this would fetch from data/live.json
-                const response = { status: 'success', message: 'Data refreshed from live.json' };
-                console.log(response);
-                
+                await fetchLiveData();
                 btn.textContent = '✓ Updated';
                 setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
             } catch (error) {
