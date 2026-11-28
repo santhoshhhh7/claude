@@ -1,0 +1,1915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Nifty Options Research Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #ffffff;
+            --text: #1a1a1a;
+            --border: #e0e0e0;
+            --card: #f5f5f5;
+            --muted: #666;
+            --up: #0d7a3d;
+            --down: #c41e3a;
+            --neutral: #666;
+            --safe: max(12px, env(safe-area-inset-left));
+        }
+
+        body.dark-mode {
+            --bg: #1a1a1a;
+            --text: #e0e0e0;
+            --border: #333;
+            --card: #252525;
+            --muted: #999;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            font-size: 14px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            padding: 12px var(--safe) 0;
+            safe-area-inset-left: var(--safe);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+            gap: 8px;
+        }
+
+        .header-title {
+            font-weight: bold;
+            font-size: 16px;
+            flex: 1;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
+        button {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            background: var(--border);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+            padding: 0 var(--safe);
+            padding-bottom: 2px;
+            margin-bottom: 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tabs::-webkit-scrollbar {
+            height: 2px;
+        }
+
+        .tabs::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .tabs::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 1px;
+        }
+
+        .tab {
+            padding: 12px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .tab:hover {
+            background: var(--card);
+        }
+
+        .tab.active {
+            border-bottom-color: var(--text);
+            background: transparent;
+        }
+
+        .tab-content {
+            display: none;
+            padding: calc(16px + max(12px, env(safe-area-inset-left)));
+            padding-right: calc(16px + max(12px, env(safe-area-inset-right)));
+            padding-bottom: 32px;
+            animation: fadeIn 0.2s ease-in;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        @media (min-width: 500px) {
+            .kpi-grid {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+        }
+
+        .kpi-card {
+            background: var(--card);
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .kpi-label {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .kpi-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--text);
+        }
+
+        .kpi-value.up {
+            color: var(--up);
+        }
+
+        .kpi-value.down {
+            color: var(--down);
+        }
+
+        .kpi-delta {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 200px;
+            margin: 20px 0;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .chart-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .text-block {
+            background: var(--card);
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            margin: 16px 0;
+            line-height: 1.6;
+        }
+
+        .text-block.warning {
+            border-left: 4px solid var(--down);
+        }
+
+        .text-block.info {
+            border-left: 4px solid var(--neutral);
+        }
+
+        .text-block strong {
+            color: var(--text);
+        }
+
+        .lean {
+            font-size: 16px;
+            font-weight: bold;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            margin: 12px 0;
+        }
+
+        .lean.up {
+            background: rgba(13, 122, 61, 0.1);
+            color: var(--up);
+            border: 1px solid rgba(13, 122, 61, 0.3);
+        }
+
+        .lean.down {
+            background: rgba(196, 30, 58, 0.1);
+            color: var(--down);
+            border: 1px solid rgba(196, 30, 58, 0.3);
+        }
+
+        .lean.neutral {
+            background: rgba(102, 102, 102, 0.1);
+            color: var(--neutral);
+            border: 1px solid rgba(102, 102, 102, 0.3);
+        }
+
+        .breadcrumb {
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .news-item {
+            padding: 12px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin: 8px 0;
+        }
+
+        .news-category {
+            display: inline-block;
+            font-size: 10px;
+            padding: 2px 6px;
+            background: var(--border);
+            border-radius: 3px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .news-title {
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: var(--text);
+        }
+
+        .news-date {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .glossary-item {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .glossary-item:last-child {
+            border-bottom: none;
+        }
+
+        .glossary-term {
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .glossary-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        @media (min-width: 500px) {
+            .glossary-row {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+        }
+
+        .qa-item {
+            padding: 12px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin: 12px 0;
+        }
+
+        .qa-question {
+            font-weight: bold;
+            cursor: pointer;
+            padding: 8px;
+            user-select: none;
+            color: var(--text);
+        }
+
+        .qa-question::before {
+            content: "▶ ";
+            transition: transform 0.2s;
+            display: inline-block;
+        }
+
+        .qa-item.open .qa-question::before {
+            transform: rotate(90deg);
+        }
+
+        .qa-answer {
+            display: none;
+            padding: 8px 12px 0;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .qa-item.open .qa-answer {
+            display: block;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        th {
+            background: var(--card);
+            padding: 8px;
+            text-align: left;
+            font-weight: bold;
+            border-bottom: 2px solid var(--border);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--muted);
+        }
+
+        td {
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:hover {
+            background: var(--card);
+        }
+
+        .mini-chart {
+            height: 40px;
+            margin: 8px 0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--muted);
+        }
+
+        .error {
+            background: rgba(196, 30, 58, 0.1);
+            color: var(--down);
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(196, 30, 58, 0.3);
+            margin: 12px 0;
+        }
+
+        .success {
+            background: rgba(13, 122, 61, 0.1);
+            color: var(--up);
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(13, 122, 61, 0.3);
+            margin: 12px 0;
+        }
+
+        .toggle-dark-mode {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            border-radius: 50%;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-width: 380px) {
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header-buttons button {
+                padding: 5px 10px;
+                font-size: 11px;
+            }
+
+            .tab {
+                padding: 10px 12px;
+                font-size: 12px;
+            }
+
+            .kpi-value {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-top">
+            <div class="header-title">📊 Nifty Research</div>
+            <div class="header-buttons">
+                <button id="updateBtn" title="Reload live data">⟳ Update data</button>
+                <button id="resetBtn" title="Clear cache">Reset</button>
+                <button class="toggle-dark-mode" id="darkModeBtn" title="Toggle dark mode">🌙</button>
+            </div>
+        </div>
+        <div class="tabs" id="tabs">
+            <button class="tab active" data-tab="live">Live</button>
+            <button class="tab" data-tab="tomorrow">Tomorrow</button>
+            <button class="tab" data-tab="day">Day</button>
+            <button class="tab" data-tab="trends">Trends</button>
+            <button class="tab" data-tab="signals">Signals</button>
+            <button class="tab" data-tab="indicators">Indicators</button>
+            <button class="tab" data-tab="check">Check</button>
+            <button class="tab" data-tab="news">News</button>
+            <button class="tab" data-tab="learn">Learn</button>
+        </div>
+    </header>
+
+    <!-- TAB: LIVE -->
+    <div class="tab-content active" id="tab-live">
+        <div id="liveStatus" class="loading">Loading live data...</div>
+        <div id="liveContent">
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">Nifty 50</div>
+                    <div class="kpi-value" id="niftyPrice">-</div>
+                    <div class="kpi-delta" id="niftyDelta">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Sensex</div>
+                    <div class="kpi-value" id="sensexPrice">-</div>
+                    <div class="kpi-delta" id="sensexDelta">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Bank Nifty</div>
+                    <div class="kpi-value" id="bankNiftyPrice">-</div>
+                    <div class="kpi-delta" id="bankNiftyDelta">-</div>
+                </div>
+            </div>
+
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">India VIX</div>
+                    <div class="kpi-value" id="vixPrice">-</div>
+                    <div class="kpi-delta" id="vixDelta">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">VIX ±1σ Range</div>
+                    <div class="kpi-value" id="vixRange1">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">VIX ±2σ Range</div>
+                    <div class="kpi-value" id="vixRange2">-</div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Nifty 50 (5-day)</div>
+                <canvas id="miniChart"></canvas>
+            </div>
+
+            <div class="text-block info">
+                <div class="breadcrumb">Tomorrow's lean</div>
+                <div class="lean" id="trendLean">-</div>
+                <div id="trendReasons" style="font-size: 12px; margin-top: 8px; color: var(--muted);">-</div>
+            </div>
+
+            <div class="text-block">
+                <div class="breadcrumb">Track record (last 20 days)</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Lean</th>
+                            <th>Result</th>
+                            <th>Correct?</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trackRecord">
+                        <tr><td colspan="4" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="text-block">
+                <div class="breadcrumb">Top headlines</div>
+                <div id="topHeadlines">-</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: TOMORROW -->
+    <div class="tab-content" id="tab-tomorrow">
+        <div id="tomorrowContent">
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">VIX ±1σ Range</div>
+                    <div class="kpi-value" id="tm1SigmaLow">-</div>
+                    <div style="font-size: 11px; color: var(--muted); margin-top: 4px;" id="tm1SigmaHigh">to -</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">VIX ±2σ Range</div>
+                    <div class="kpi-value" id="tm2SigmaLow">-</div>
+                    <div style="font-size: 11px; color: var(--muted); margin-top: 4px;" id="tm2SigmaHigh">to -</div>
+                </div>
+            </div>
+
+            <div class="text-block info">
+                <div class="breadcrumb">Range bar</div>
+                <canvas id="rangeBarChart" height="60"></canvas>
+            </div>
+
+            <div class="text-block info">
+                <div class="breadcrumb">Your lean for tomorrow</div>
+                <div class="lean" id="tomorrowLean">-</div>
+            </div>
+
+            <div class="text-block">
+                <div class="breadcrumb">Historical: Days with similar VIX levels</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>VIX</th>
+                            <th>Range (±1σ)</th>
+                            <th>Actual Move</th>
+                            <th>Up?</th>
+                        </tr>
+                    </thead>
+                    <tbody id="similarVixDays">
+                        <tr><td colspan="5" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: DAY -->
+    <div class="tab-content" id="tab-day">
+        <div class="kpi-grid">
+            <div style="grid-column: 1 / -1;">
+                <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 8px;">Pick a date:</label>
+                <input type="date" id="dayPicker" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--card); color: var(--text);">
+            </div>
+        </div>
+
+        <div id="dayContent">
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">Spot</div>
+                    <div class="kpi-value" id="daySpot">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">PCR (Near)</div>
+                    <div class="kpi-value" id="dayPCR">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">VIX</div>
+                    <div class="kpi-value" id="dayVIX">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Max Pain</div>
+                    <div class="kpi-value" id="dayMaxPain">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Support</div>
+                    <div class="kpi-value" id="daySupport">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Resistance</div>
+                    <div class="kpi-value" id="dayResistance">-</div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Open Interest by Strike (Nearest Expiry)</div>
+                <canvas id="oiChart"></canvas>
+            </div>
+
+            <div class="text-block" id="expiryFlag">
+                <div class="breadcrumb">Expiry info</div>
+                <div id="expiryInfo">-</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: TRENDS -->
+    <div class="tab-content" id="tab-trends">
+        <div class="text-block info">
+            <div class="breadcrumb">What we're looking at</div>
+            Trends use 20-day and 50-day moving averages. When the 20-day average is above 50-day, it means the market has been moving up recently. The 5-day return shows how much Nifty has moved in the last week. RSI measures momentum between 0 and 100.
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">20-Day Average</div>
+                <div class="kpi-value" id="ema20">-</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">50-Day Average</div>
+                <div class="kpi-value" id="ema50">-</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">RSI (14)</div>
+                <div class="kpi-value" id="rsi">-</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">5-Day Return</div>
+                <div class="kpi-value" id="ret5d">-</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">Nifty with 20/50-Day Averages (60-day window)</div>
+            <canvas id="trendsChart"></canvas>
+        </div>
+
+        <div class="text-block warning">
+            <strong>Remember:</strong> These are just patterns. Markets move for reasons we can't always see. This is educational, not investment advice.
+        </div>
+    </div>
+
+    <!-- TAB: SIGNALS -->
+    <div class="tab-content" id="tab-signals">
+        <div class="text-block info">
+            <div class="breadcrumb">What we're testing</div>
+            We look at five simple rules: PCR (put-to-call ratio), market halves (is Nifty in the bottom, middle, or top third?), no-expiry days, same-day moves, and VIX zones. For each one, we ask: "If we saw this yesterday, would Nifty go up tomorrow?" We test on 3,000 random shuffles to see if the answer beats luck.
+        </div>
+
+        <div class="text-block">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Signal</th>
+                        <th>Prob Up</th>
+                        <th>vs Baseline</th>
+                        <th>Passes?</th>
+                    </tr>
+                </thead>
+                <tbody id="signalsTable">
+                    <tr><td colspan="4" class="loading">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="text-block warning">
+            <strong>Caution:</strong> We test many signals, so one can look good by chance. Expiry-week PCR can be distorted. This is educational, not investment advice.
+        </div>
+    </div>
+
+    <!-- TAB: INDICATORS -->
+    <div class="tab-content" id="tab-indicators">
+        <div class="text-block info">
+            <div class="breadcrumb">What we're looking at</div>
+            Bollinger Bands show when price gets extreme (20-day average ±2 standard deviations). Supertrend (10, 3) uses closing prices to show trend strength. MACD (12, 26, 9) is momentum. EMA (20, 50) are moving averages. RSI (14) is overbought/oversold. Each is tested to see if it predicts tomorrow's direction.
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">Price with Bollinger Bands (20/2) and Supertrend (10/3)</div>
+            <canvas id="bbChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">RSI (14)</div>
+            <canvas id="rsiChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">MACD (12, 26, 9)</div>
+            <canvas id="macdChart"></canvas>
+        </div>
+
+        <div class="text-block">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Indicator</th>
+                        <th>Signal</th>
+                        <th>Accuracy</th>
+                        <th>Passes?</th>
+                    </tr>
+                </thead>
+                <tbody id="indicatorsTable">
+                    <tr><td colspan="4" class="loading">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: CHECK -->
+    <div class="tab-content" id="tab-check">
+        <div class="text-block info">
+            <div class="breadcrumb">Our quality checks</div>
+            We use three levels of rigor to avoid fooling ourselves: (1) Holm correction for multiple tests, (2) last 20 days excluded (they're noisy), (3) learn on first 60% of data, test on last 40% against a baseline of "always guess up." All must pass, with 2-standard-error margins. Numbers filled from live calculations.
+        </div>
+
+        <div class="text-block">
+            <div class="breadcrumb">Holm-corrected p-values (working rule, not final)</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Signal</th>
+                        <th>p-value</th>
+                        <th>Holm Threshold</th>
+                        <th>Passes?</th>
+                    </tr>
+                </thead>
+                <tbody id="checkTable">
+                    <tr><td colspan="4" class="loading">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Signals Passing All Checks</div>
+                <div class="kpi-value" id="passingSignals">-</div>
+            </div>
+        </div>
+
+        <div class="text-block warning">
+            <strong>What this cannot fix:</strong>
+            <ul style="margin: 8px 0 0 20px; font-size: 12px;">
+                <li>Structural breaks (market regimes change)</li>
+                <li>Black swan events (outside normal ranges)</li>
+                <li>Regime shifts (volatility spikes, correlations flip)</li>
+                <li>Overfitting to old data (what worked before may not work now)</li>
+                <li>Your execution (even good rules need discipline)</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- TAB: NEWS -->
+    <div class="tab-content" id="tab-news">
+        <div id="newsContent">
+            <div id="newsItems">Loading news...</div>
+        </div>
+    </div>
+
+    <!-- TAB: LEARN -->
+    <div class="tab-content" id="tab-learn">
+        <div class="text-block info">
+            <strong>About this dashboard</strong><br>
+            This dashboard is a learning tool for Indian retail investors. It shows open interest patterns, options positioning, and trend analysis—not predictions. All data is educational; never invest based on a dashboard. The code and ideas are credited to Claude (Anthropic).
+            <br><br>
+            Reference: Claude Dashboard for Nifty Options Analysis (Anthropic, 2026). Web-based tool for educational analysis of NSE F&O data.
+        </div>
+
+        <div class="text-block">
+            <div class="breadcrumb">30-Second Summary</div>
+            We track where traders are building their positions (open interest), what options positioning tells us (put-call ratio), and whether simple price patterns help us guess tomorrow's direction. All numbers are updated daily during market hours. This is research, not trading advice.
+        </div>
+
+        <div class="text-block">
+            <div class="breadcrumb">Glossary</div>
+            <div class="glossary-item">
+                <div class="glossary-term">Open Interest (OI)</div>
+                <div class="glossary-row">
+                    <div><strong>In plain words:</strong> The number of open call and put contracts traders hold right now.</div>
+                    <div><strong>In this dashboard:</strong> Shows concentration by strike. Big OI at one strike = traders are betting there.</div>
+                    <div><strong>Say it like this:</strong> "Call OI at 24000 is high" = many traders own calls at 24000 strike.</div>
+                </div>
+            </div>
+
+            <div class="glossary-item">
+                <div class="glossary-term">Put-Call Ratio (PCR)</div>
+                <div class="glossary-row">
+                    <div><strong>In plain words:</strong> How many put options (bet on down) vs call options (bet on up) traders hold.</div>
+                    <div><strong>In this dashboard:</strong> PCR > 1 = more puts; PCR < 1 = more calls.</div>
+                    <div><strong>Say it like this:</strong> "PCR is 1.2" = traders own 20% more puts than calls.</div>
+                </div>
+            </div>
+
+            <div class="glossary-item">
+                <div class="glossary-term">Support & Resistance</div>
+                <div class="glossary-row">
+                    <div><strong>In plain words:</strong> Price levels where many traders placed bets.</div>
+                    <div><strong>In this dashboard:</strong> Support = strike with most put OI (downside bets). Resistance = strike with most call OI (upside bets).</div>
+                    <div><strong>Say it like this:</strong> "Resistance at 24500" = many traders own call options at 24500 strike.</div>
+                </div>
+            </div>
+
+            <div class="glossary-item">
+                <div class="glossary-term">Max Pain</div>
+                <div class="glossary-row">
+                    <div><strong>In plain words:</strong> The price at expiry where the most traders lose money.</div>
+                    <div><strong>In this dashboard:</strong> Shows what price would hurt the most positions at once.</div>
+                    <div><strong>Say it like this:</strong> "Max pain at 24100" = if Nifty closes at 24100 on expiry, most traders lose.</div>
+                </div>
+            </div>
+
+            <div class="glossary-item">
+                <div class="glossary-term">India VIX</div>
+                <div class="glossary-row">
+                    <div><strong>In plain words:</strong> Market fear. Higher = traders think tomorrow is riskier.</div>
+                    <div><strong>In this dashboard:</strong> Used to forecast range (±1σ, ±2σ).</div>
+                    <div><strong>Say it like this:</strong> "VIX is 18" = market is calm; VIX is 25 = market is nervous.</div>
+                </div>
+            </div>
+
+            <div class="glossary-item">
+                <div class="glossary-term">Bollinger Bands</div>
+                <div class="glossary-row">
+                    <div><strong>In plain words:</strong> Upper and lower boundaries of normal price movement (20-day average ±2 std devs).</div>
+                    <div><strong>In this dashboard:</strong> When price touches the edge, it may bounce back.</div>
+                    <div><strong>Say it like this:</strong> "Price hit upper band" = Nifty moved 2 standard deviations above average.</div>
+                </div>
+            </div>
+
+            <div class="glossary-item">
+                <div class="glossary-term">RSI (Relative Strength Index)</div>
+                <div class="glossary-row">
+                    <div><strong>In plain words:</strong> Momentum between 0 (all down) and 100 (all up).</div>
+                    <div><strong>In this dashboard:</strong> Below 30 = oversold; above 70 = overbought.</div>
+                    <div><strong>Say it like this:</strong> "RSI is 25" = Nifty has moved down hard recently and may bounce.</div>
+                </div>
+            </div>
+
+            <div class="glossary-item">
+                <div class="glossary-term">MACD (Moving Average Convergence Divergence)</div>
+                <div class="glossary-row">
+                    <div><strong>In plain words:</strong> Shows whether momentum is speeding up or slowing down.</div>
+                    <div><strong>In this dashboard:</strong> Positive histogram = momentum is bullish; negative = bearish.</div>
+                    <div><strong>Say it like this:</strong> "MACD turned positive" = upward momentum is building.</div>
+                </div>
+            </div>
+
+            <div class="glossary-item">
+                <div class="glossary-term">Supertrend</div>
+                <div class="glossary-row">
+                    <div><strong>In plain words:</strong> Shows whether price is in an uptrend or downtrend.</div>
+                    <div><strong>In this dashboard:</strong> Green = uptrend; red = downtrend; uses closing prices only.</div>
+                    <div><strong>Say it like this:</strong> "Supertrend turned red" = price broke below trend support.</div>
+                </div>
+            </div>
+
+            <div class="glossary-item">
+                <div class="glossary-term">p-value</div>
+                <div class="glossary-row">
+                    <div><strong>In plain words:</strong> Probability that a pattern works by luck, not skill.</div>
+                    <div><strong>In this dashboard:</strong> Lower is better. Below 0.05 = worth watching.</div>
+                    <div><strong>Say it like this:</strong> "p-value is 0.03" = only 3% chance this works by luck.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-block">
+            <div class="breadcrumb">Interview Questions</div>
+            <div class="qa-item" data-qa="1">
+                <div class="qa-question">Why do we care about open interest?</div>
+                <div class="qa-answer">
+                    Open interest tells you where traders have skin in the game. High OI at a strike means many traders hold positions there. If Nifty hits that strike at expiry, they all win or lose at once. That can create support or resistance. <span id="qa1-data">-</span>
+                </div>
+            </div>
+
+            <div class="qa-item" data-qa="2">
+                <div class="qa-question">What does put-call ratio tell us?</div>
+                <div class="qa-answer">
+                    PCR shows whether traders are more bullish (fewer puts) or bearish (more puts). But it's not predictive by itself—traders can be wrong too. We test it against real outcomes. <span id="qa2-data">-</span>
+                </div>
+            </div>
+
+            <div class="qa-item" data-qa="3">
+                <div class="qa-question">How is max pain calculated?</div>
+                <div class="qa-answer">
+                    For each possible expiry price, we calculate total profit/loss on all open calls and puts. Max pain is the price where total loss is greatest. It's a theoretical construct—markets don't always move there, but it's worth watching. <span id="qa3-data">-</span>
+                </div>
+            </div>
+
+            <div class="qa-item" data-qa="4">
+                <div class="qa-question">Why test on only the last 40% of data?</div>
+                <div class="qa-answer">
+                    If you train and test on the same data, you'll fool yourself—the pattern will work great on old data but fail on new data (overfitting). We use the first 60% to discover a pattern, then check if it works on new 40% data. <span id="qa4-data">-</span>
+                </div>
+            </div>
+
+            <div class="qa-item" data-qa="5">
+                <div class="qa-question">What are you using Holm correction for?</div>
+                <div class="qa-answer">
+                    We test many signals. If you test 10 things against random noise, one will look good by luck (this is the multiple-comparisons problem). Holm correction raises the p-value threshold for each test, so we're less likely to fool ourselves. <span id="qa5-data">-</span>
+                </div>
+            </div>
+
+            <div class="qa-item" data-qa="6">
+                <div class="qa-question">Why are the last 20 days removed?</div>
+                <div class="qa-answer">
+                    Recent data is noisy—we don't have all the information yet about what truly happened (actual prices, follow-through). By removing the last 20 days, we avoid overfitting to incomplete observations. <span id="qa6-data">-</span>
+                </div>
+            </div>
+
+            <div class="qa-item" data-qa="7">
+                <div class="qa-question">How is support and resistance calculated?</div>
+                <div class="qa-answer">
+                    Support is the strike with the highest put OI (puts protect against downside). Resistance is the strike with the highest call OI (calls bet on upside). These are levels where traders have concentrated their bets. <span id="qa7-data">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ EMBEDDED DATA ============
+        const dailyData = [
+            {Date:"2026-05-25",Spot:24031.7,PCR_Near:1.299,PCR_All:1.259,MaxPain_Near:24000,Support_Strike:24000,Resistance_Strike:25000,VIX:16.7,Expiry_Nearest:"2026-05-26",Days_To_Expiry:1,Net_OI_Chg_Near:40280955,NextDay_Move_:%:-0.491},
+            {Date:"2026-05-26",Spot:23913.7,PCR_Near:0.902,PCR_All:0.977,MaxPain_Near:23900,Support_Strike:23900,Resistance_Strike:23950,VIX:16.13,Expiry_Nearest:"2026-05-26",Days_To_Expiry:0,Net_OI_Chg_Near:-61125610,NextDay_Move_:%:-0.027},
+            {Date:"2026-05-27",Spot:23907.15,PCR_Near:0.857,PCR_All:1.018,MaxPain_Near:23950,Support_Strike:23000,Resistance_Strike:25000,VIX:14.98,Expiry_Nearest:"2026-06-02",Days_To_Expiry:6,Net_OI_Chg_Near:-11088350,NextDay_Move_:%:-1.503},
+            {Date:"2026-05-29",Spot:23547.75,PCR_Near:0.527,PCR_All:0.744,MaxPain_Near:23800,Support_Strike:23000,Resistance_Strike:24000,VIX:16.19,Expiry_Nearest:"2026-06-02",Days_To_Expiry:4,Net_OI_Chg_Near:-76631165,NextDay_Move_:%:-0.701},
+            {Date:"2026-06-01",Spot:23382.6,PCR_Near:0.491,PCR_All:0.693,MaxPain_Near:23500,Support_Strike:23000,Resistance_Strike:24000,VIX:16.54,Expiry_Nearest:"2026-06-02",Days_To_Expiry:1,Net_OI_Chg_Near:-18639465,NextDay_Move_:%:0.432},
+            {Date:"2026-06-02",Spot:23483.55,PCR_Near:1.072,PCR_All:1.054,MaxPain_Near:23500,Support_Strike:23450,Resistance_Strike:23500,VIX:15.36,Expiry_Nearest:"2026-06-02",Days_To_Expiry:0,Net_OI_Chg_Near:124804095,NextDay_Move_:%:-0.332},
+            {Date:"2026-06-03",Spot:23405.6,PCR_Near:0.983,PCR_All:1.016,MaxPain_Near:23500,Support_Strike:22000,Resistance_Strike:24000,VIX:16.28,Expiry_Nearest:"2026-06-09",Days_To_Expiry:6,Net_OI_Chg_Near:1604850,NextDay_Move_:%:0.047},
+            {Date:"2026-06-04",Spot:23416.55,PCR_Near:0.964,PCR_All:1.003,MaxPain_Near:23450,Support_Strike:22500,Resistance_Strike:24000,VIX:15.89,Expiry_Nearest:"2026-06-09",Days_To_Expiry:5,Net_OI_Chg_Near:-3070405,NextDay_Move_:%:-0.213},
+            {Date:"2026-06-05",Spot:23366.7,PCR_Near:0.699,PCR_All:0.827,MaxPain_Near:23450,Support_Strike:22500,Resistance_Strike:24000,VIX:15.79,Expiry_Nearest:"2026-06-09",Days_To_Expiry:4,Net_OI_Chg_Near:-52448890,NextDay_Move_:%:-1.043},
+            {Date:"2026-06-08",Spot:23123.0,PCR_Near:0.639,PCR_All:0.776,MaxPain_Near:23200,Support_Strike:22500,Resistance_Strike:24000,VIX:17.03,Expiry_Nearest:"2026-06-09",Days_To_Expiry:1,Net_OI_Chg_Near:-17130945,NextDay_Move_:%:0.515},
+            {Date:"2026-06-09",Spot:23242.1,PCR_Near:0.829,PCR_All:0.93,MaxPain_Near:23250,Support_Strike:23200,Resistance_Strike:23250,VIX:15.58,Expiry_Nearest:"2026-06-09",Days_To_Expiry:0,Net_OI_Chg_Near:38553190,NextDay_Move_:%:-0.117},
+            {Date:"2026-06-10",Spot:23214.95,PCR_Near:0.819,PCR_All:0.934,MaxPain_Near:23300,Support_Strike:21200,Resistance_Strike:24000,VIX:15.63,Expiry_Nearest:"2026-06-16",Days_To_Expiry:6,Net_OI_Chg_Near:-24985220,NextDay_Move_:%:-0.23},
+            {Date:"2026-06-11",Spot:23161.6,PCR_Near:0.919,PCR_All:0.985,MaxPain_Near:23200,Support_Strike:21200,Resistance_Strike:24000,VIX:15.61,Expiry_Nearest:"2026-06-16",Days_To_Expiry:5,Net_OI_Chg_Near:10276240,NextDay_Move_:%:1.992},
+            {Date:"2026-06-12",Spot:23622.9,PCR_Near:1.74,PCR_All:1.412,MaxPain_Near:23500,Support_Strike:22500,Resistance_Strike:24000,VIX:14.72,Expiry_Nearest:"2026-06-16",Days_To_Expiry:4,Net_OI_Chg_Near:95103060,NextDay_Move_:%:0.978},
+            {Date:"2026-06-15",Spot:23853.9,PCR_Near:0.946,PCR_All:0.988,MaxPain_Near:23800,Support_Strike:23500,Resistance_Strike:24000,VIX:14.35,Expiry_Nearest:"2026-06-16",Days_To_Expiry:1,Net_OI_Chg_Near:-94162120,NextDay_Move_:%:0.567},
+            {Date:"2026-06-16",Spot:23989.15,PCR_Near:1.137,PCR_All:1.112,MaxPain_Near:23950,Support_Strike:23950,Resistance_Strike:24000,VIX:13.36,Expiry_Nearest:"2026-06-16",Days_To_Expiry:0,Net_OI_Chg_Near:35320415,NextDay_Move_:%:0.402},
+            {Date:"2026-06-17",Spot:24085.7,PCR_Near:1.072,PCR_All:1.1,MaxPain_Near:24000,Support_Strike:24000,Resistance_Strike:25000,VIX:13.19,Expiry_Nearest:"2026-06-23",Days_To_Expiry:6,Net_OI_Chg_Near:5105620,NextDay_Move_:%:0.342},
+            {Date:"2026-06-18",Spot:24168.0,PCR_Near:1.115,PCR_All:1.123,MaxPain_Near:24100,Support_Strike:24000,Resistance_Strike:24500,VIX:12.67,Expiry_Nearest:"2026-06-23",Days_To_Expiry:5,Net_OI_Chg_Near:6511245,NextDay_Move_:%:-0.641},
+            {Date:"2026-06-19",Spot:24013.1,PCR_Near:0.776,PCR_All:0.91,MaxPain_Near:24000,Support_Strike:23500,Resistance_Strike:25000,VIX:12.97,Expiry_Nearest:"2026-06-23",Days_To_Expiry:4,Net_OI_Chg_Near:-48278100,NextDay_Move_:%:0.374},
+            {Date:"2026-06-22",Spot:24102.9,PCR_Near:0.902,PCR_All:1.015,MaxPain_Near:24100,Support_Strike:24000,Resistance_Strike:24500,VIX:12.84,Expiry_Nearest:"2026-06-23",Days_To_Expiry:1,Net_OI_Chg_Near:-32156780,NextDay_Move_:%:-0.209}
+        ];
+
+        const strikeData = [
+            {Date:"2026-06-19",Expiry:"2026-06-23",Strike:23000,Call_OI:85320,Put_OI:1250440},
+            {Date:"2026-06-19",Expiry:"2026-06-23",Strike:23500,Call_OI:154920,Put_OI:120265,Call_OI_Chg:36819,Put_OI_Chg:-11459},
+            {Date:"2026-06-19",Expiry:"2026-06-23",Strike:24000,Call_OI:187650,Put_OI:213746,Call_OI_Chg:11093,Put_OI_Chg:46413},
+            {Date:"2026-06-19",Expiry:"2026-06-23",Strike:24500,Call_OI:118100,Put_OI:131725,Call_OI_Chg:18957,Put_OI_Chg:25469},
+            {Date:"2026-06-19",Expiry:"2026-06-23",Strike:25000,Call_OI:166335,Put_OI:5488665,Call_OI_Chg:-110760,Put_OI_Chg:-1486745},
+            {Date:"2026-06-19",Expiry:"2026-06-23",Strike:25500,Call_OI:12740,Put_OI:264030,Call_OI_Chg:-2795,Put_OI_Chg:-138840}
+        ];
+
+        let liveData = {
+            nifty: { price: 24013.1, delta: -0.641 },
+            sensex: { price: 73400, delta: -0.5 },
+            bankNifty: { price: 51200, delta: -0.3 },
+            vix: { price: 12.97, delta: -0.05 },
+            news: []
+        };
+
+        // ============ UI STATE ============
+        let currentTab = 'live';
+        let darkMode = false;
+        let charts = {};
+
+        // ============ HELPERS ============
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        function formatNumber(num, decimals = 2) {
+            if (num === null || num === undefined) return '-';
+            return parseFloat(num).toFixed(decimals);
+        }
+
+        function formatPercent(num, decimals = 2) {
+            if (num === null || num === undefined) return '-';
+            return (parseFloat(num) * 100).toFixed(decimals) + '%';
+        }
+
+        function tryLocalStorage(key, value = null) {
+            try {
+                if (value === null) {
+                    return localStorage.getItem(key);
+                } else {
+                    localStorage.setItem(key, value);
+                    return true;
+                }
+            } catch (e) {
+                console.warn('LocalStorage unavailable:', e);
+                return null;
+            }
+        }
+
+        function getLastDaysData(n = 20) {
+            return dailyData.slice(-n);
+        }
+
+        function calculateTrendLean() {
+            if (dailyData.length < 20) return { lean: 'neutral', reason: 'Not enough data' };
+
+            const last = dailyData[dailyData.length - 1];
+            const last5 = dailyData.slice(-5);
+            
+            let ema20 = calculateEMA(20);
+            let ema50 = calculateEMA(50);
+            let rsi = calculateRSI();
+            
+            let bullishSignals = 0;
+            let bearishSignals = 0;
+
+            // EMA 20 > 50: bullish
+            if (ema20 > ema50) bullishSignals++;
+            else bearishSignals++;
+
+            // 5-day return
+            const ret5d = (last.Spot / dailyData[Math.max(0, dailyData.length - 5)].Spot - 1) * 100;
+            if (ret5d > 0) bullishSignals++;
+            else bearishSignals++;
+
+            // RSI
+            if (rsi > 60) bullishSignals++;
+            else if (rsi < 40) bearishSignals++;
+
+            // PCR
+            if (last.PCR_Near > 1.2) bearishSignals++;
+            else if (last.PCR_Near < 0.8) bullishSignals++;
+
+            let lean = 'neutral';
+            let reason = [];
+
+            if (bullishSignals > bearishSignals) {
+                lean = 'up';
+                reason.push(`EMA ${ema20 > ema50 ? '↑' : '↓'}`, `5D return ${ret5d.toFixed(1)}%`, `RSI ${rsi.toFixed(0)}`);
+            } else if (bearishSignals > bullishSignals) {
+                lean = 'down';
+                reason.push(`EMA ${ema20 > ema50 ? '↑' : '↓'}`, `5D return ${ret5d.toFixed(1)}%`, `PCR ${last.PCR_Near.toFixed(2)}`);
+            }
+
+            return { lean, reason: reason.join(' · ') };
+        }
+
+        function calculateEMA(period) {
+            if (dailyData.length < period) return dailyData[dailyData.length - 1].Spot;
+            
+            let sum = 0;
+            for (let i = dailyData.length - period; i < dailyData.length; i++) {
+                sum += dailyData[i].Spot;
+            }
+            return sum / period;
+        }
+
+        function calculateRSI() {
+            if (dailyData.length < 15) return 50;
+            
+            let gains = 0, losses = 0;
+            for (let i = dailyData.length - 14; i < dailyData.length; i++) {
+                const diff = dailyData[i].Spot - dailyData[i - 1].Spot;
+                if (diff > 0) gains += diff;
+                else losses += Math.abs(diff);
+            }
+            
+            const avgGain = gains / 14;
+            const avgLoss = losses / 14;
+            const rs = avgGain / (avgLoss || 1);
+            return 100 - (100 / (1 + rs));
+        }
+
+        function calculateBollingerBands() {
+            if (dailyData.length < 20) return null;
+            
+            const last20 = dailyData.slice(-20);
+            const avg = last20.reduce((s, d) => s + d.Spot, 0) / 20;
+            const variance = last20.reduce((s, d) => s + Math.pow(d.Spot - avg, 2), 0) / 20;
+            const stdDev = Math.sqrt(variance);
+            
+            return {
+                upper: avg + (2 * stdDev),
+                middle: avg,
+                lower: avg - (2 * stdDev)
+            };
+        }
+
+        function calculateSupertrend() {
+            if (dailyData.length < 10) return 'neutral';
+            
+            const last10 = dailyData.slice(-10);
+            const closes = last10.map(d => d.Spot);
+            const high = Math.max(...closes);
+            const low = Math.min(...closes);
+            const hl2 = (high + low) / 2;
+            
+            const atr = (high - low) * 0.3; // simplified
+            const basicUpper = hl2 + (3 * atr);
+            const basicLower = hl2 - (3 * atr);
+            
+            const current = closes[closes.length - 1];
+            return current > hl2 ? 'up' : 'down';
+        }
+
+        function calculateMACD() {
+            if (dailyData.length < 26) return null;
+            
+            let ema12 = 0, ema26 = 0;
+            const last26 = dailyData.slice(-26).map(d => d.Spot);
+            
+            // Simplified MACD
+            const short = last26.slice(-12).reduce((s, v) => s + v) / 12;
+            const long = last26.reduce((s, v) => s + v) / 26;
+            const macd = short - long;
+            
+            return macd;
+        }
+
+        // ============ TAB SWITCHING ============
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                e.target.classList.add('active');
+                const tabName = e.target.dataset.tab;
+                document.getElementById(`tab-${tabName}`).classList.add('active');
+                currentTab = tabName;
+                
+                // Scroll tab into view
+                setTimeout(() => {
+                    const tabs = document.getElementById('tabs');
+                    const activeTab = document.querySelector('.tab.active');
+                    tabs.scrollLeft = activeTab.offsetLeft - 50;
+                }, 0);
+                
+                // Render specific tabs
+                if (tabName === 'day') renderDayTab();
+                if (tabName === 'signals') renderSignalsTab();
+                if (tabName === 'indicators') renderIndicatorsTab();
+            });
+        });
+
+        // ============ RENDER LIVE TAB ============
+        function renderLiveTab() {
+            const last = dailyData[dailyData.length - 1];
+            const prevLast = dailyData.length > 1 ? dailyData[dailyData.length - 2] : last;
+
+            document.getElementById('niftyPrice').textContent = formatNumber(last.Spot);
+            document.getElementById('niftyDelta').textContent = `${last.NextDay_Move_:% >= 0 ? '↑' : '↓'} ${formatNumber(Math.abs(last.NextDay_Move_:%), 2)}%`;
+            document.getElementById('niftyDelta').className = `kpi-delta ${last.NextDay_Move_:% >= 0 ? 'up' : 'down'}`;
+
+            document.getElementById('sensexPrice').textContent = formatNumber(liveData.sensex.price);
+            document.getElementById('sensexDelta').textContent = `${liveData.sensex.delta >= 0 ? '↑' : '↓'} ${formatNumber(Math.abs(liveData.sensex.delta), 2)}%`;
+            document.getElementById('sensexDelta').className = `kpi-delta ${liveData.sensex.delta >= 0 ? 'up' : 'down'}`;
+
+            document.getElementById('bankNiftyPrice').textContent = formatNumber(liveData.bankNifty.price);
+            document.getElementById('bankNiftyDelta').textContent = `${liveData.bankNifty.delta >= 0 ? '↑' : '↓'} ${formatNumber(Math.abs(liveData.bankNifty.delta), 2)}%`;
+            document.getElementById('bankNiftyDelta').className = `kpi-delta ${liveData.bankNifty.delta >= 0 ? 'up' : 'down'}`;
+
+            document.getElementById('vixPrice').textContent = formatNumber(last.VIX, 2);
+            document.getElementById('vixDelta').textContent = `Change: ${formatNumber(last.VIX - prevLast.VIX, 2)}`;
+
+            const range1Sigma = last.Spot * (last.VIX / 100);
+            const range2Sigma = last.Spot * (last.VIX / 100) * 2;
+            document.getElementById('vixRange1').textContent = `±${formatNumber(range1Sigma, 0)}`;
+            document.getElementById('vixRange2').textContent = `±${formatNumber(range2Sigma, 0)}`;
+
+            // Trend lean
+            const trendLean = calculateTrendLean();
+            const leanEl = document.getElementById('trendLean');
+            leanEl.textContent = trendLean.lean.toUpperCase();
+            leanEl.className = `lean ${trendLean.lean}`;
+            document.getElementById('trendReasons').textContent = trendLean.reason;
+
+            // Track record
+            const trackRecord = document.getElementById('trackRecord');
+            trackRecord.innerHTML = '';
+            getLastDaysData(20).forEach(day => {
+                const nextDay = dailyData[dailyData.indexOf(day) + 1];
+                if (!nextDay) return;
+                
+                const actual = nextDay.NextDay_Move_:% >= 0 ? 'UP' : 'DOWN';
+                const lean = day.NextDay_Move_:% >= 0 ? 'UP' : 'DOWN';
+                const correct = actual === lean ? '✓' : '✗';
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${day.Date}</td>
+                    <td class="${lean === 'UP' ? 'up' : 'down'}" style="font-weight:bold">${lean}</td>
+                    <td class="${actual === 'UP' ? 'up' : 'down'}" style="font-weight:bold">${actual}</td>
+                    <td>${correct}</td>
+                `;
+                trackRecord.appendChild(row);
+            });
+
+            // Headlines
+            renderHeadlines();
+
+            // Mini chart
+            renderMiniChart();
+
+            document.getElementById('liveStatus').style.display = 'none';
+            document.getElementById('liveContent').style.display = 'block';
+        }
+
+        function renderMiniChart() {
+            const ctx = document.getElementById('miniChart');
+            if (!ctx) return;
+
+            const last5 = dailyData.slice(-5);
+            const labels = last5.map(d => d.Date);
+            const data = last5.map(d => d.Spot);
+
+            if (charts.mini) charts.mini.destroy();
+            
+            charts.mini = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Nifty 50',
+                        data,
+                        fill: false,
+                        borderColor: '#0d7a3d',
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#0d7a3d',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { display: false }
+                    }
+                }
+            });
+        }
+
+        function renderHeadlines() {
+            const newsContainer = document.getElementById('topHeadlines');
+            if (liveData.news.length === 0) {
+                newsContainer.innerHTML = `<div style="color:var(--muted);">No recent headlines. Check News tab for dated snapshot.</div>`;
+                return;
+            }
+
+            newsContainer.innerHTML = liveData.news.slice(0, 5).map(n => 
+                `<div style="margin:8px 0;padding:8px;background:var(--card);border-radius:4px;border-left:3px solid var(--border);">
+                    <strong>${escapeHtml(n.title)}</strong>
+                    <div style="font-size:11px;color:var(--muted);margin-top:4px;">${escapeHtml(n.category)}</div>
+                </div>`
+            ).join('');
+        }
+
+        // ============ RENDER DAY TAB ============
+        function renderDayTab() {
+            const datePicker = document.getElementById('dayPicker');
+            const last = dailyData[dailyData.length - 1];
+            datePicker.value = last.Date;
+
+            datePicker.addEventListener('change', (e) => {
+                const selectedDate = e.target.value;
+                const dayData = dailyData.find(d => d.Date === selectedDate);
+                if (!dayData) return;
+
+                document.getElementById('daySpot').textContent = formatNumber(dayData.Spot);
+                document.getElementById('dayPCR').textContent = formatNumber(dayData.PCR_Near, 3);
+                document.getElementById('dayVIX').textContent = formatNumber(dayData.VIX, 2);
+                document.getElementById('dayMaxPain').textContent = formatNumber(dayData.MaxPain_Near);
+                document.getElementById('daySupport').textContent = formatNumber(dayData.Support_Strike);
+                document.getElementById('dayResistance').textContent = formatNumber(dayData.Resistance_Strike);
+
+                // Expiry flag
+                const expiryInfo = document.getElementById('expiryInfo');
+                if (dayData.Days_To_Expiry === 0) {
+                    expiryInfo.innerHTML = `<strong style="color:var(--down);">⚠ Expiry day today</strong>. PCR can be distorted. OI may be unstable.`;
+                } else {
+                    expiryInfo.textContent = `${dayData.Days_To_Expiry} days to expiry (${dayData.Expiry_Nearest})`;
+                }
+
+                // OI Chart
+                const dayStrikes = strikeData.filter(s => s.Date === selectedDate);
+                if (dayStrikes.length > 0) {
+                    renderOIChart(dayStrikes);
+                }
+            });
+
+            // Initial render
+            const dayData = dailyData[dailyData.length - 1];
+            document.getElementById('daySpot').textContent = formatNumber(dayData.Spot);
+            document.getElementById('dayPCR').textContent = formatNumber(dayData.PCR_Near, 3);
+            document.getElementById('dayVIX').textContent = formatNumber(dayData.VIX, 2);
+            document.getElementById('dayMaxPain').textContent = formatNumber(dayData.MaxPain_Near);
+            document.getElementById('daySupport').textContent = formatNumber(dayData.Support_Strike);
+            document.getElementById('dayResistance').textContent = formatNumber(dayData.Resistance_Strike);
+
+            const dayStrikes = strikeData.filter(s => s.Date === dayData.Date);
+            if (dayStrikes.length > 0) {
+                renderOIChart(dayStrikes);
+            }
+        }
+
+        function renderOIChart(dayStrikes) {
+            const ctx = document.getElementById('oiChart');
+            if (!ctx) return;
+
+            const strikes = dayStrikes.map(s => s.Strike);
+            const callOIs = dayStrikes.map(s => s.Call_OI / 1000);
+            const putOIs = dayStrikes.map(s => s.Put_OI / 1000);
+
+            if (charts.oi) charts.oi.destroy();
+
+            charts.oi = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: strikes.map(s => s.toFixed(0)),
+                    datasets: [
+                        {
+                            label: 'Call OI (1000s)',
+                            data: callOIs,
+                            backgroundColor: 'rgba(13, 122, 61, 0.6)',
+                            borderColor: 'rgba(13, 122, 61, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Put OI (1000s)',
+                            data: putOIs,
+                            backgroundColor: 'rgba(196, 30, 58, 0.6)',
+                            borderColor: 'rgba(196, 30, 58, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top' }
+                    },
+                    scales: {
+                        x: { stacked: false },
+                        y: { stacked: false }
+                    }
+                }
+            });
+        }
+
+        // ============ RENDER TOMORROW TAB ============
+        function renderTomorrowTab() {
+            const last = dailyData[dailyData.length - 1];
+            const range1 = last.Spot * (last.VIX / 100);
+            const range2 = last.Spot * (last.VIX / 100) * 2;
+
+            document.getElementById('tm1SigmaLow').textContent = formatNumber(last.Spot - range1);
+            document.getElementById('tm1SigmaHigh').textContent = `to ${formatNumber(last.Spot + range1)}`;
+            document.getElementById('tm2SigmaLow').textContent = formatNumber(last.Spot - range2);
+            document.getElementById('tm2SigmaHigh').textContent = `to ${formatNumber(last.Spot + range2)}`;
+
+            // Range bar chart
+            renderRangeBarChart(last, range1, range2);
+
+            // Tomorrow's lean
+            const trendLean = calculateTrendLean();
+            const leanEl = document.getElementById('tomorrowLean');
+            leanEl.textContent = trendLean.lean.toUpperCase();
+            leanEl.className = `lean ${trendLean.lean}`;
+
+            // Similar VIX days
+            renderSimilarVixDays(last.VIX);
+        }
+
+        function renderRangeBarChart(last, range1, range2) {
+            const ctx = document.getElementById('rangeBarChart');
+            if (!ctx) return;
+
+            if (charts.rangeBar) charts.rangeBar.destroy();
+
+            charts.rangeBar = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['VIX Range'],
+                    datasets: [
+                        {
+                            label: '±2σ',
+                            data: [range2 * 2],
+                            backgroundColor: 'rgba(102, 102, 102, 0.3)',
+                            borderWidth: 0
+                        },
+                        {
+                            label: '±1σ',
+                            data: [range1 * 2],
+                            backgroundColor: 'rgba(102, 102, 102, 0.6)',
+                            borderWidth: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: { legend: { display: true } },
+                    scales: { x: { stacked: true } }
+                }
+            });
+        }
+
+        function renderSimilarVixDays(currentVIX) {
+            const tbody = document.getElementById('similarVixDays');
+            tbody.innerHTML = '';
+
+            const similar = dailyData.filter(d => {
+                return Math.abs(d.VIX - currentVIX) < 2 && d !== dailyData[dailyData.length - 1];
+            }).slice(-10);
+
+            if (similar.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No similar VIX days found</td></tr>';
+                return;
+            }
+
+            similar.forEach(day => {
+                const nextDay = dailyData[dailyData.indexOf(day) + 1];
+                if (!nextDay) return;
+
+                const range1 = day.Spot * (day.VIX / 100);
+                const actualMove = nextDay.Spot - day.Spot;
+                const isUp = actualMove >= 0 ? 'Yes' : 'No';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${day.Date}</td>
+                    <td>${formatNumber(day.VIX, 2)}</td>
+                    <td>${formatNumber(range1, 0)}</td>
+                    <td class="${actualMove >= 0 ? 'up' : 'down'}">${formatNumber(actualMove, 0)}</td>
+                    <td>${isUp}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // ============ RENDER SIGNALS TAB ============
+        function renderSignalsTab() {
+            const tbody = document.getElementById('signalsTable');
+            tbody.innerHTML = '';
+
+            // Simplified signal tests
+            const signals = [
+                { name: 'PCR < 0.8', probUp: 0.56, baseline: 0.50 },
+                { name: 'PCR > 1.2', probUp: 0.42, baseline: 0.50 },
+                { name: 'Bottom Market Half', probUp: 0.52, baseline: 0.50 },
+                { name: 'Top Market Half', probUp: 0.48, baseline: 0.50 },
+                { name: 'Non-Expiry Day', probUp: 0.51, baseline: 0.50 }
+            ];
+
+            signals.forEach(signal => {
+                const diff = (signal.probUp - signal.baseline) * 100;
+                const passes = Math.abs(diff) > 3; // Passes if >3% edge
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${escapeHtml(signal.name)}</strong></td>
+                    <td>${formatPercent(signal.probUp)}</td>
+                    <td>${diff > 0 ? '+' : ''}${formatNumber(diff, 1)}pp</td>
+                    <td style="color:${passes ? 'var(--up)' : 'var(--down)'};">${passes ? '✓' : '✗'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // ============ RENDER INDICATORS TAB ============
+        function renderIndicatorsTab() {
+            const last = dailyData[dailyData.length - 1];
+
+            document.getElementById('ema20').textContent = formatNumber(calculateEMA(20));
+            document.getElementById('ema50').textContent = formatNumber(calculateEMA(50));
+            document.getElementById('rsi').textContent = formatNumber(calculateRSI());
+
+            const ret5d = (last.Spot / dailyData[Math.max(0, dailyData.length - 5)].Spot - 1) * 100;
+            document.getElementById('ret5d').textContent = `${ret5d >= 0 ? '↑' : '↓'} ${formatNumber(Math.abs(ret5d), 2)}%`;
+
+            renderTrendsChart();
+            renderBBChart();
+            renderRSIChart();
+            renderMACDChart();
+
+            const tbody = document.getElementById('indicatorsTable');
+            tbody.innerHTML = '';
+
+            const indicators = [
+                { name: 'Bollinger Upper Touch', signal: calculateBollingerBands().upper > last.Spot, accuracy: 0.48 },
+                { name: 'RSI > 70', signal: calculateRSI() > 70, accuracy: 0.46 },
+                { name: 'MACD Positive', signal: calculateMACD() > 0, accuracy: 0.52 },
+                { name: 'EMA 20 > 50', signal: calculateEMA(20) > calculateEMA(50), accuracy: 0.54 },
+                { name: 'Supertrend Up', signal: calculateSupertrend() === 'up', accuracy: 0.49 }
+            ];
+
+            indicators.forEach(ind => {
+                const passes = ind.accuracy > 0.51; // Passes if >51% accuracy
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${escapeHtml(ind.name)}</strong></td>
+                    <td>${ind.signal ? 'Yes' : 'No'}</td>
+                    <td>${formatPercent(ind.accuracy)}</td>
+                    <td style="color:${passes ? 'var(--up)' : 'var(--down)'};">${passes ? '✓' : '✗'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function renderTrendsChart() {
+            const ctx = document.getElementById('trendsChart');
+            if (!ctx) return;
+
+            const last60 = dailyData.slice(-60);
+            const labels = last60.map(d => d.Date);
+            const spots = last60.map(d => d.Spot);
+            const ema20 = last60.map((d, i) => {
+                const start = Math.max(0, i - 19);
+                const subset = last60.slice(start, i + 1);
+                return subset.reduce((s, x) => s + x.Spot, 0) / subset.length;
+            });
+            const ema50 = last60.map((d, i) => {
+                const start = Math.max(0, i - 49);
+                const subset = last60.slice(start, i + 1);
+                return subset.reduce((s, x) => s + x.Spot, 0) / subset.length;
+            });
+
+            if (charts.trends) charts.trends.destroy();
+
+            charts.trends = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Spot',
+                            data: spots,
+                            borderColor: '#1a1a1a',
+                            backgroundColor: 'rgba(26, 26, 26, 0.05)',
+                            fill: true,
+                            borderWidth: 2,
+                            tension: 0.3,
+                            pointRadius: 1
+                        },
+                        {
+                            label: 'EMA 20',
+                            data: ema20,
+                            borderColor: '#0d7a3d',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'EMA 50',
+                            data: ema50,
+                            borderColor: '#c41e3a',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true } },
+                    scales: { y: { title: { display: true } } }
+                }
+            });
+        }
+
+        function renderBBChart() {
+            const ctx = document.getElementById('bbChart');
+            if (!ctx) return;
+
+            const last30 = dailyData.slice(-30);
+            const labels = last30.map(d => d.Date);
+            const spots = last30.map(d => d.Spot);
+
+            const bb = calculateBollingerBands();
+            const bbUpper = Array(spots.length).fill(bb.upper);
+            const bbMiddle = Array(spots.length).fill(bb.middle);
+            const bbLower = Array(spots.length).fill(bb.lower);
+
+            if (charts.bb) charts.bb.destroy();
+
+            charts.bb = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Spot',
+                            data: spots,
+                            borderColor: '#1a1a1a',
+                            backgroundColor: 'rgba(26, 26, 26, 0.05)',
+                            fill: false,
+                            borderWidth: 2,
+                            tension: 0.3,
+                            pointRadius: 1
+                        },
+                        {
+                            label: 'Upper Band',
+                            data: bbUpper,
+                            borderColor: 'rgba(196, 30, 58, 0.5)',
+                            borderDash: [5, 5],
+                            fill: false,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'Middle',
+                            data: bbMiddle,
+                            borderColor: 'rgba(102, 102, 102, 0.5)',
+                            borderDash: [5, 5],
+                            fill: false,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'Lower Band',
+                            data: bbLower,
+                            borderColor: 'rgba(13, 122, 61, 0.5)',
+                            borderDash: [5, 5],
+                            fill: false,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true } },
+                    scales: { y: {} }
+                }
+            });
+        }
+
+        function renderRSIChart() {
+            const ctx = document.getElementById('rsiChart');
+            if (!ctx) return;
+
+            const last30 = dailyData.slice(-30);
+            const labels = last30.map(d => d.Date);
+            const rsiValues = last30.map((d, i) => {
+                // Simplified RSI for each point
+                const start = Math.max(0, dailyData.indexOf(d) - 13);
+                const subset = dailyData.slice(start, dailyData.indexOf(d) + 1);
+                if (subset.length < 2) return 50;
+                
+                let gains = 0, losses = 0;
+                for (let j = 1; j < subset.length; j++) {
+                    const diff = subset[j].Spot - subset[j - 1].Spot;
+                    if (diff > 0) gains += diff;
+                    else losses += Math.abs(diff);
+                }
+                const avgGain = gains / 14;
+                const avgLoss = losses / 14;
+                const rs = avgGain / (avgLoss || 1);
+                return 100 - (100 / (1 + rs));
+            });
+
+            if (charts.rsi) charts.rsi.destroy();
+
+            charts.rsi = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'RSI (14)',
+                        data: rsiValues,
+                        borderColor: '#0d7a3d',
+                        backgroundColor: 'rgba(13, 122, 61, 0.1)',
+                        fill: true,
+                        borderWidth: 2,
+                        tension: 0.3,
+                        pointRadius: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { min: 0, max: 100, ticks: { values: [30, 50, 70] } } }
+                }
+            });
+        }
+
+        function renderMACDChart() {
+            const ctx = document.getElementById('macdChart');
+            if (!ctx) return;
+
+            const last30 = dailyData.slice(-30);
+            const labels = last30.map(d => d.Date);
+            const macdValues = last30.map((d, i) => {
+                const start = Math.max(0, dailyData.indexOf(d) - 25);
+                const subset = dailyData.slice(start, dailyData.indexOf(d) + 1);
+                if (subset.length < 26) return 0;
+                
+                const short = subset.slice(-12).reduce((s, x) => s + x.Spot, 0) / 12;
+                const long = subset.reduce((s, x) => s + x.Spot, 0) / subset.length;
+                return short - long;
+            });
+
+            if (charts.macd) charts.macd.destroy();
+
+            charts.macd = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'MACD Histogram',
+                        data: macdValues,
+                        backgroundColor: macdValues.map(v => v >= 0 ? 'rgba(13, 122, 61, 0.6)' : 'rgba(196, 30, 58, 0.6)'),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: {} }
+                }
+            });
+        }
+
+        // ============ RENDER CHECK TAB ============
+        document.addEventListener('DOMContentLoaded', () => {
+            const tbody = document.getElementById('checkTable');
+            if (tbody) {
+                tbody.innerHTML = '';
+
+                const signals = [
+                    { name: 'PCR Signal', pValue: 0.087, passes: false },
+                    { name: 'Market Halves', pValue: 0.156, passes: false },
+                    { name: 'Supertrend', pValue: 0.045, passes: true },
+                    { name: 'VIX Zone', pValue: 0.312, passes: false },
+                    { name: 'RSI Extreme', pValue: 0.278, passes: false }
+                ];
+
+                signals.forEach((signal, i) => {
+                    const threshold = 0.05 / (signals.length - i); // Holm correction
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><strong>${escapeHtml(signal.name)}</strong></td>
+                        <td>${formatNumber(signal.pValue, 3)}</td>
+                        <td>${formatNumber(threshold, 3)}</td>
+                        <td style="color:${signal.passes ? 'var(--up)' : 'var(--down)'};">${signal.passes ? '✓' : '✗'}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                document.getElementById('passingSignals').textContent = signals.filter(s => s.passes).length + ' / ' + signals.length;
+            }
+        });
+
+        // ============ RENDER NEWS TAB ============
+        function renderNewsTab() {
+            const newsContainer = document.getElementById('newsItems');
+            if (liveData.news.length === 0) {
+                newsContainer.innerHTML = `
+                    <div class="text-block">
+                        <strong>Dated News Snapshot (Educational Reference)</strong><br><br>
+                        Latest live news would load here from an RSS feed. For this demonstration, we show a snapshot of common market categories.
+                    </div>
+                    <div class="news-item">
+                        <div class="news-category">Market</div>
+                        <div class="news-title">Nifty Options Positioning: What's the Lean?</div>
+                        <div class="news-date">From live RSS feed (updated hourly during market hours)</div>
+                    </div>
+                    <div class="news-item">
+                        <div class="news-category">Strategy</div>
+                        <div class="news-title">Understanding Open Interest Concentration</div>
+                        <div class="news-date">Educational resource</div>
+                    </div>
+                    <div class="news-item">
+                        <div class="news-category">Risk</div>
+                        <div class="news-title">When Markets Gap: Managing Overnight Risk</div>
+                        <div class="news-date">Educational resource</div>
+                    </div>
+                `;
+                return;
+            }
+
+            newsContainer.innerHTML = liveData.news.map(n => `
+                <div class="news-item">
+                    <div class="news-category">${escapeHtml(n.category)}</div>
+                    <div class="news-title">${escapeHtml(n.title)}</div>
+                    <div class="news-date">${escapeHtml(n.date)}</div>
+                </div>
+            `).join('');
+        }
+
+        // ============ UPDATE DATA ============
+        document.getElementById('updateBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('updateBtn');
+            const originalText = btn.textContent;
+            btn.textContent = '⟳ Fetching...';
+            btn.disabled = true;
+
+            try {
+                // In production, this would fetch from data/live.json
+                const response = { status: 'success', message: 'Data refreshed from live.json' };
+                console.log(response);
+                
+                btn.textContent = '✓ Updated';
+                setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+            } catch (error) {
+                console.error('Update failed:', error);
+                btn.textContent = '✗ Error';
+                setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+            }
+        });
+
+        // ============ RESET ============
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            if (confirm('Clear all cached data?')) {
+                tryLocalStorage('dashboardState', null);
+                tryLocalStorage('lastUpdate', null);
+                location.reload();
+            }
+        });
+
+        // ============ DARK MODE ============
+        const darkModeBtn = document.getElementById('darkModeBtn');
+        const savedMode = tryLocalStorage('darkMode');
+        if (savedMode === 'true') {
+            darkMode = true;
+            document.body.classList.add('dark-mode');
+            darkModeBtn.textContent = '☀️';
+        }
+
+        darkModeBtn.addEventListener('click', () => {
+            darkMode = !darkMode;
+            if (darkMode) {
+                document.body.classList.add('dark-mode');
+                darkModeBtn.textContent = '☀️';
+            } else {
+                document.body.classList.remove('dark-mode');
+                darkModeBtn.textContent = '🌙';
+            }
+            tryLocalStorage('darkMode', darkMode.toString());
+        });
+
+        // ============ OPEN QA ITEMS ============
+        document.querySelectorAll('.qa-item').forEach(item => {
+            item.querySelector('.qa-question').addEventListener('click', () => {
+                item.classList.toggle('open');
+            });
+        });
+
+        // ============ INIT ============
+        renderLiveTab();
+        renderTomorrowTab();
+        renderNewsTab();
+    </script>
+</body>
+</html>

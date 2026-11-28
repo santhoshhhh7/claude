@@ -1,0 +1,67 @@
+{
+  "timestamp": "2026-06-19T14:30:00+05:30",
+  "market_hours_ist": "09:15 - 15:30",
+  "indices": {
+    "nifty50": {
+      "price": 24013.1,
+      "delta": -0.641,
+      "currency": "INR"
+    },
+    "sensex": {
+      "price": 73400,
+      "delta": -0.5,
+      "currency": "INR"
+    },
+    "banknifty": {
+      "price": 51200,
+      "delta": -0.3,
+      "currency": "INR"
+    }
+  },
+  "vix": {
+    "value": 12.97,
+    "change": -0.05
+  },
+  "vix_range": {
+    "range_1sigma": 240,
+    "range_2sigma": 480,
+    "lower_1sigma": 23773,
+    "upper_1sigma": 24253,
+    "lower_2sigma": 23533,
+    "upper_2sigma": 24493
+  },
+  "trend_lean": {
+    "lean": "neutral",
+    "reasons": [
+      "EMA crossover pending",
+      "VIX in normal range",
+      "No clear signal"
+    ],
+    "confidence": 0.5
+  },
+  "news": [
+    {
+      "title": "Nifty Options Positioning: What's the Lean?",
+      "category": "Market",
+      "date": "2026-06-19",
+      "link": "#"
+    },
+    {
+      "title": "Understanding Open Interest Concentration",
+      "category": "Strategy",
+      "date": "2026-06-18",
+      "link": "#"
+    },
+    {
+      "title": "When Markets Gap: Managing Overnight Risk",
+      "category": "Risk",
+      "date": "2026-06-17",
+      "link": "#"
+    }
+  ],
+  "log": {
+    "last_update": "2026-06-19T14:30:00+05:30",
+    "status": "success",
+    "message": "Data fetched successfully during market hours"
+  }
+}
